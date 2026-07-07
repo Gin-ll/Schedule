@@ -12,6 +12,8 @@ export interface Category {
   name: string;
   color: string;
   note?: string;
+  isDeleted?: number;
+  revision?: number;
 }
 
 export interface Schedule {
@@ -30,4 +32,6 @@ export interface Schedule {
   updatedAt: string;      // 冲突合并 LWW 算法的决胜字段
   isNotified?: boolean;
   subtasks?: Subtask[];
+  isDeleted?: number;
+  revision?: number;
 }
