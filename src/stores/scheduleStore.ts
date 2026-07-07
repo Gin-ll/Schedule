@@ -78,6 +78,33 @@ export const useScheduleStore = defineStore('schedule', {
       });
       this.categories = this.categories.filter(c => c.id !== catId);
       await dbManager.execute("UPDATE categories SET is_deleted = 1 WHERE id = ?", [catId]);
+    },
+    async deleteSchedule(id: string) {
+      const now = new Date().toISOString();
+      this.schedules = this.schedules.filter(s => s.id !== id);
+      await dbManager.execute("UPDATE schedules SET is_deleted = 1, updated_at = ? WHERE id = ?", [now, id]);
+    },
+    async addCategory(payload: Omit<Category, 'id'>) {
+      const id = `cat-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
+      const category: Category = { ...payload, id };
+      this.categories.push(category);
+      await dbManager.execute(
+        "INSERT INTO categories (id, name, color, note, is_deleted) VALUES (?,?,?,?,0)",
+        [id, category.name, category.color, category.note || null]
+      );
+    },
+    async updateCategory(id: string, payload: Partial<Category>) {
+      this.categories = this.categories.map(c => {
+        if (c.id === id) {
+          const updated = { ...c, ...payload };
+          dbManager.execute(
+            "UPDATE categories SET name=?, color=?, note=? WHERE id=?",
+            [updated.name, updated.color, updated.note || null, id]
+          );
+          return updated;
+        }
+        return c;
+      });
     }
   }
 });
