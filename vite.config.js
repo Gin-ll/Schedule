@@ -13,6 +13,13 @@ export default defineConfig({
   build: {
     outDir: '../dist',
     emptyOutDir: true,
+    rollupOptions: {
+      external: [
+        'tauri-plugin-sql-api',
+        /^\@tauri-apps\/api/,
+        /^\@tauri-apps\/plugin/
+      ]
+    }
   },
   server: {
     port: 5173,

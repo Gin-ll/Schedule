@@ -24,7 +24,7 @@
     </div>
 
     <!-- 列表视图 -->
-    <div v-slot:default v-if="activeView === 'list'" class="content-panel active list-layout-with-sidebar">
+    <div v-if="activeView === 'list'" class="content-panel active list-layout-with-sidebar">
       <aside class="smart-sidebar">
         <ul class="smart-list-filters">
           <li :class="{ active: listFilter === 'today' }" @click="listFilter = 'today'">
@@ -109,7 +109,7 @@
     </div>
 
     <!-- 日历视图 -->
-    <div v-slot:default v-if="activeView === 'calendar'" class="content-panel active calendar-layout">
+    <div v-if="activeView === 'calendar'" class="content-panel active calendar-layout">
       <section class="calendar-area">
         <div class="calendar-header">
           <div style="display: flex; gap: 8px; align-items: center;">
