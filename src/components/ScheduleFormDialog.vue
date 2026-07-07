@@ -44,43 +44,65 @@
         </div>
 
         <div class="form-grid">
-          <label>
-            分类
-            <select v-model="form.categoryId" style="width: 100%;">
-              <option value="">未分类</option>
-              <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-            </select>
-          </label>
-          <label>
-            循环规则
-            <select v-model="form.recurrence" style="width: 100%;">
-              <option value="none">不循环</option>
-              <option value="daily">每天</option>
-              <option value="weekly">每周</option>
-              <option value="monthly">每月</option>
-            </select>
-          </label>
+          <div class="flex flex-col gap-1.5">
+            <span class="text-xs font-semibold text-foreground/70">分类</span>
+            <Select v-model="form.categoryId">
+              <SelectTrigger style="width: 100%;">
+                <SelectValue placeholder="选择分类" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">未分类</SelectItem>
+                <SelectItem v-for="cat in categories" :key="cat.id" :value="cat.id">
+                  {{ cat.name }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <span class="text-xs font-semibold text-foreground/70">循环规则</span>
+            <Select v-model="form.recurrence">
+              <SelectTrigger style="width: 100%;">
+                <SelectValue placeholder="选择循环规则" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">不循环</SelectItem>
+                <SelectItem value="daily">每天</SelectItem>
+                <SelectItem value="weekly">每周</SelectItem>
+                <SelectItem value="monthly">每月</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div class="form-grid">
-          <label>
-            状态
-            <select v-model="form.status" style="width: 100%;">
-              <option value="pending">未开始</option>
-              <option value="in-progress">进行中</option>
-              <option value="completed">已完成</option>
-              <option value="delayed">已延期</option>
-            </select>
-          </label>
-          <label>
-            提醒
-            <select v-model="form.reminder" style="width: 100%;">
-              <option value="none">无</option>
-              <option value="10m">提前 10 分钟</option>
-              <option value="30m">提前 30 分钟</option>
-              <option value="1h">提前 1 小时</option>
-            </select>
-          </label>
+          <div class="flex flex-col gap-1.5">
+            <span class="text-xs font-semibold text-foreground/70">状态</span>
+            <Select v-model="form.status">
+              <SelectTrigger style="width: 100%;">
+                <SelectValue placeholder="选择状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">未开始</SelectItem>
+                <SelectItem value="in-progress">进行中</SelectItem>
+                <SelectItem value="completed">已完成</SelectItem>
+                <SelectItem value="delayed">已延期</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <span class="text-xs font-semibold text-foreground/70">提醒</span>
+            <Select v-model="form.reminder">
+              <SelectTrigger style="width: 100%;">
+                <SelectValue placeholder="选择提醒" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">无</SelectItem>
+                <SelectItem value="10m">提前 10 分钟</SelectItem>
+                <SelectItem value="30m">提前 30 分钟</SelectItem>
+                <SelectItem value="1h">提前 1 小时</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div class="check-row flex items-center gap-2 mt-2">
@@ -111,6 +133,13 @@ import {
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { platform } from '../utils/platformAdapter';
 import type { Category, Subtask, RecurrenceType, ScheduleStatus } from '../types';
 
@@ -196,7 +225,7 @@ async function open(scheduleId?: string) {
       startTime: startLocal,
       endTime: endLocal,
       recurrence: copiedItem.recurrence || 'none',
-      categoryId: copiedItem.categoryId || '',
+      categoryId: copiedItem.categoryId || '__none',
       status: copiedItem.status || 'pending',
       reminder: copiedItem.reminder || 'none',
       important: copiedItem.important === 1 || copiedItem.important === true,
@@ -224,7 +253,7 @@ function setupNewSchedule() {
     startTime: startLocal,
     endTime: endLocal,
     recurrence: 'none',
-    categoryId: '',
+    categoryId: '__none',
     status: 'pending',
     reminder: 'none',
     important: false,
@@ -295,7 +324,7 @@ async function saveSchedule() {
       startTime: startTimeISO,
       endTime: endTimeISO,
       recurrence: form.value.recurrence,
-      categoryId: form.value.categoryId,
+      categoryId: form.value.categoryId === '__none' ? '' : form.value.categoryId,
       status: form.value.status,
       reminder: form.value.reminder,
       important: form.value.important,
