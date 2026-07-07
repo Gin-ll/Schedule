@@ -299,7 +299,7 @@
 <script lang="ts">
 import { defineComponent, ref, computed } from 'vue';
 import { useScheduleStore } from '../stores/scheduleStore';
-import { generateCalendarGrid, CalendarDaySlot, ScheduleInstance } from '../utils/calendarScheduler';
+import { CalendarEngine, CalendarDaySlot, ScheduleInstance } from '../utils/calendarEngine';
 import { Schedule, Category, Subtask, RecurrenceType, ScheduleStatus } from '../types';
 import { Icon } from '@iconify/vue';
 
@@ -513,7 +513,7 @@ export default defineComponent({
     // 日历格子生成
     const activeMonthDate = computed(() => new Date(calendarYear.value, calendarMonth.value, 1));
     const calendarCells = computed<CalendarDaySlot[]>(() => {
-      return generateCalendarGrid(store.schedules, activeMonthDate.value);
+      return CalendarEngine.generateGrid(store.schedules, activeMonthDate.value);
     });
 
     // 选中日期的日程实例
