@@ -7,39 +7,113 @@
       </DialogHeader>
 
       <form class="dialog-form" @submit.prevent="saveSchedule">
-        <label>
-          标题
-          <input v-model="form.title" type="text" required maxlength="60" style="width: 100%;" />
-        </label>
+        <div class="grid gap-2">
+          <Label class="text-xs font-semibold text-foreground/70">标题 <span class="text-destructive">*</span></Label>
+          <Input v-model="form.title" type="text" required placeholder="请输入日程标题" maxlength="60" />
+        </div>
 
-        <label>
-          内容
-          <textarea v-model="form.content" rows="3" maxlength="300" style="width: 100%;"></textarea>
-        </label>
+        <div class="grid gap-2">
+          <Label class="text-xs font-semibold text-foreground/70">内容</Label>
+          <Textarea v-model="form.content" placeholder="输入日程备注内容" rows="3" maxlength="300" />
+        </div>
 
         <!-- 子任务容器 -->
-        <div class="dialog-subtasks-container">
-          <label>子任务</label>
-          <div class="dialog-subtask-list">
-            <div v-for="(st, index) in form.subtasks" :key="st.id" class="dialog-subtask-row" style="display: flex; align-items: center; justify-content: space-between;">
-              <span style="flex: 1; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">{{ st.title }}</span>
-              <button type="button" class="plain-button" @click="removeSubtask(index)" style="padding: 2px 8px; font-size: 11px; min-height: 24px; border-radius: 999px;">删除</button>
+        <div class="dialog-subtasks-container grid gap-2">
+          <Label class="text-xs font-semibold text-foreground/70">子任务</Label>
+          <div class="dialog-subtask-list max-h-[120px] overflow-y-auto border border-input rounded-md p-2 gap-1.5 flex flex-col empty:hidden">
+            <div v-for="(st, index) in form.subtasks" :key="st.id" class="dialog-subtask-row flex items-center justify-between bg-muted/30 px-2 py-1.5 rounded-sm">
+              <span class="text-sm truncate mr-2">{{ st.title }}</span>
+              <Button type="button" variant="ghost" size="xs" class="h-6 text-destructive hover:bg-destructive/10" @click="removeSubtask(index)">删除</Button>
             </div>
           </div>
-          <div class="dialog-subtask-input-row" style="display: flex; gap: 8px;">
-            <input type="text" v-model="newSubtaskTitle" placeholder="输入子任务内容" maxlength="60" style="flex: 1;" />
-            <button type="button" class="plain-button" @click="addSubtask" style="border-radius: 8px;">添加</button>
+          <div class="dialog-subtask-input-row flex gap-2">
+            <Input type="text" v-model="newSubtaskTitle" placeholder="输入子任务内容" maxlength="60" class="flex-1" />
+            <Button type="button" variant="secondary" @click="addSubtask">添加</Button>
           </div>
         </div>
 
         <div class="form-grid">
-          <label>
-            开始时间
-            <input v-model="form.startTime" type="datetime-local" required style="width: 100%;" />
-          </label>
-          <label>
-            结束时间
-            <input v-model="form.endTime" type="datetime-local" style="width: 100%;" />
+          <div class="flex flex-col gap-1.5">
+            <span class="text-xs font-semibold text-foreground/70">开始时间 *</span>
+            <Popover>
+              <PopoverTrigger as-child>
+                <Button variant="outline" class="w-full justify-start text-left font-normal h-9">
+                  <Icon icon="lucide:calendar" class="mr-2 h-4 w-4 text-foreground/60" />
+                  {{ formatDateTime(startCalendarDate, startHour, startMinute) }}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent class="w-auto p-0" align="start">
+                <Calendar v-model="startCalendarDate" class="rounded-t-md" />
+                <div class="flex items-center justify-between border-t border-border p-3 gap-3 bg-muted/10">
+                  <span class="text-xs font-semibold text-muted-foreground">具体时间</span>
+                  <div class="flex items-center gap-1.5">
+                    <Select v-model="startHour">
+                      <SelectTrigger class="w-[60px] h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem v-for="h in hoursList" :key="h" :value="h">{{ h }}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span class="text-xs">:</span>
+                    <Select v-model="startMinute">
+                      <SelectTrigger class="w-[60px] h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem v-for="m in minutesList" :key="m" :value="m">{{ m }}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-foreground/70">结束时间</span>
+              <button type="button" @click="hasEndTime = !hasEndTime" class="text-[10px] text-primary underline cursor-pointer select-none">
+                {{ hasEndTime ? '清除结束时间' : '设定结束时间' }}
+              </button>
+            </div>
+            <Popover v-if="hasEndTime">
+              <PopoverTrigger as-child>
+                <Button variant="outline" class="w-full justify-start text-left font-normal h-9">
+                  <Icon icon="lucide:calendar" class="mr-2 h-4 w-4 text-foreground/60" />
+                  {{ formatDateTime(endCalendarDate, endHour, endMinute) }}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent class="w-auto p-0" align="start">
+                <Calendar v-model="endCalendarDate" class="rounded-t-md" />
+                <div class="flex items-center justify-between border-t border-border p-3 gap-3 bg-muted/10">
+                  <span class="text-xs font-semibold text-muted-foreground">具体时间</span>
+                  <div class="flex items-center gap-1.5">
+                    <Select v-model="endHour">
+                      <SelectTrigger class="w-[60px] h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem v-for="h in hoursList" :key="h" :value="h">{{ h }}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span class="text-xs">:</span>
+                    <Select v-model="endMinute">
+                      <SelectTrigger class="w-[60px] h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem v-for="m in minutesList" :key="m" :value="m">{{ m }}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Button v-else variant="ghost" disabled class="w-full justify-start text-left text-muted-foreground/60 h-9 font-normal border border-dashed border-input">
+              无结束时间
+            </Button>
+          </div>
+        </div>         <input v-model="form.endTime" type="datetime-local" style="width: 100%;" />
           </label>
         </div>
 
@@ -110,11 +184,13 @@
           <Label for="formImportant" class="text-xs font-normal cursor-pointer select-none text-foreground/80">标记为重点日程</Label>
         </div>
 
-        <footer style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
-          <button class="plain-button" type="button" @click="openState = false" style="border-radius: 999px;">取消</button>
-          <button class="primary-button" type="submit" :disabled="isSaving" style="padding: 6px 20px;">
+        <footer class="flex justify-end gap-2 mt-6 border-t border-border pt-4">
+          <Button type="button" variant="outline" @click="openState = false">
+            取消
+          </Button>
+          <Button type="submit" :disabled="isSaving">
             {{ isSaving ? '保存中...' : '保存' }}
-          </button>
+          </Button>
         </footer>
       </form>
     </DialogContent>
@@ -122,8 +198,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { useScheduleStore } from '../stores/scheduleStore';
 import {
   Dialog,
   DialogContent,
@@ -140,6 +214,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarDate } from '@internationalized/date';
+import { Icon } from '@iconify/vue';
+
+import { ref, watch } from 'vue';
+import { useScheduleStore } from '../stores/scheduleStore';
 import { platform } from '../utils/platformAdapter';
 import type { Category, Subtask, RecurrenceType, ScheduleStatus } from '../types';
 
@@ -152,6 +236,26 @@ const emit = defineEmits<{
 }>();
 
 const store = useScheduleStore();
+
+// 预设选项定义
+const hoursList = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+const minutesList = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
+
+// 组合时间选择器的状态定义
+const startCalendarDate = ref<any>(new CalendarDate(2026, 7, 7));
+const startHour = ref('12');
+const startMinute = ref('00');
+
+const hasEndTime = ref(false);
+const endCalendarDate = ref<any>(new CalendarDate(2026, 7, 7));
+const endHour = ref('13');
+const endMinute = ref('00');
+
+// 工具函数：格式化展示时间文本
+function formatDateTime(calDate: CalendarDate | null, hour: string, minute: string): string {
+  if (!calDate) return '';
+  return `${calDate.year}/${String(calDate.month).padStart(2, '0')}/${String(calDate.day).padStart(2, '0')} ${hour}:${minute}`;
+}
 
 const openState = ref(false);
 const isEditing = ref(false);
@@ -210,20 +314,30 @@ async function open(scheduleId?: string) {
     isEditing.value = true;
     editingId.value = scheduleId;
     
-    // 打开编辑时执行 JSON.parse(JSON.stringify(item)) 深度拷贝数据
+    // 深度拷贝数据
     const copiedItem = JSON.parse(JSON.stringify(item));
     
-    // 时间转换：在 open 载入时将 ISO 时间字符串转换并格式化为前端 datetime-local 输入框所需的 YYYY-MM-DDTHH:mm 本地格式
-    const startLocal = new Date(copiedItem.startTime).toLocaleString('sv').slice(0, 16).replace(' ', 'T');
-    const endLocal = copiedItem.endTime 
-      ? new Date(copiedItem.endTime).toLocaleString('sv').slice(0, 16).replace(' ', 'T')
-      : '';
+    // 时间转换与格式化
+    const startDate = new Date(copiedItem.startTime);
+    startCalendarDate.value = new CalendarDate(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate());
+    startHour.value = String(startDate.getHours()).padStart(2, '0');
+    startMinute.value = String(Math.floor(startDate.getMinutes() / 5) * 5).padStart(2, '0');
+    
+    if (copiedItem.endTime) {
+      hasEndTime.value = true;
+      const endDate = new Date(copiedItem.endTime);
+      endCalendarDate.value = new CalendarDate(endDate.getFullYear(), endDate.getMonth() + 1, endDate.getDate());
+      endHour.value = String(endDate.getHours()).padStart(2, '0');
+      endMinute.value = String(Math.floor(endDate.getMinutes() / 5) * 5).padStart(2, '0');
+    } else {
+      hasEndTime.value = false;
+    }
     
     form.value = {
       title: copiedItem.title,
       content: copiedItem.content || '',
-      startTime: startLocal,
-      endTime: endLocal,
+      startTime: copiedItem.startTime,
+      endTime: copiedItem.endTime || '',
       recurrence: copiedItem.recurrence || 'none',
       categoryId: copiedItem.categoryId || '__none',
       status: copiedItem.status || 'pending',
@@ -238,20 +352,23 @@ async function open(scheduleId?: string) {
 }
 
 function setupNewSchedule() {
-  isEditing.value = false;
-  editingId.value = null;
-  
   const now = new Date();
-  now.setMinutes(0, 0, 0);
+  now.setHours(now.getHours() + 1, 0, 0, 0);
+  startCalendarDate.value = new CalendarDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  startHour.value = String(now.getHours()).padStart(2, '0');
+  startMinute.value = '00';
   
-  const startLocal = new Date(now.getTime() + 60 * 60 * 1000).toLocaleString('sv').slice(0, 16).replace(' ', 'T');
-  const endLocal = new Date(now.getTime() + 2 * 60 * 60 * 1000).toLocaleString('sv').slice(0, 16).replace(' ', 'T');
+  const end = new Date(now.getTime() + 60 * 60 * 1000);
+  endCalendarDate.value = new CalendarDate(end.getFullYear(), end.getMonth() + 1, end.getDate());
+  endHour.value = String(end.getHours()).padStart(2, '0');
+  endMinute.value = '00';
+  hasEndTime.value = true;
   
   form.value = {
     title: '',
     content: '',
-    startTime: startLocal,
-    endTime: endLocal,
+    startTime: now.toISOString(),
+    endTime: end.toISOString(),
     recurrence: 'none',
     categoryId: '__none',
     status: 'pending',
@@ -279,22 +396,26 @@ function removeSubtask(index: number) {
 }
 
 async function saveSchedule() {
-  // 必填字段 title 在保存前执行 .trim()
-  const trimmedTitle = form.value.title.trim();
-  if (!trimmedTitle) {
-    await platform.showError("保存失败", "标题不能为空");
-    return;
-  }
-  form.value.title = trimmedTitle;
-
-  // 校验 startTime 必须早于 endTime，若无效则使用 platform.showError 报错拦截
-  if (form.value.startTime && form.value.endTime) {
-    const start = new Date(form.value.startTime);
-    const end = new Date(form.value.endTime);
-    if (start.getTime() >= end.getTime()) {
+  // 组装 ISO 时间字符串
+  const startYear = startCalendarDate.value.year;
+  const startMonth = startCalendarDate.value.month - 1;
+  const startDay = startCalendarDate.value.day;
+  const startDate = new Date(startYear, startMonth, startDay, Number(startHour.value), Number(startMinute.value));
+  const startTimeISO = startDate.toISOString();
+  
+  let endTimeISO = undefined;
+  if (hasEndTime.value && endCalendarDate.value) {
+    const endYear = endCalendarDate.value.year;
+    const endMonth = endCalendarDate.value.month - 1;
+    const endDay = endCalendarDate.value.day;
+    const endDate = new Date(endYear, endMonth, endDay, Number(endHour.value), Number(endMinute.value));
+    
+    // 校验 startTime 必须早于 endTime
+    if (startDate.getTime() >= endDate.getTime()) {
       await platform.showError("时间范围错误", "开始时间必须早于结束时间");
       return;
     }
+    endTimeISO = endDate.toISOString();
   }
 
   // 过滤空子任务及重复名称子任务
@@ -314,10 +435,6 @@ async function saveSchedule() {
   isSaving.value = true;
 
   try {
-    // 转换回 .toISOString() 标准 ISO 时间
-    const startTimeISO = new Date(form.value.startTime).toISOString();
-    const endTimeISO = form.value.endTime ? new Date(form.value.endTime).toISOString() : undefined;
-
     const payload = {
       title: form.value.title,
       content: form.value.content,
@@ -342,7 +459,6 @@ async function saveSchedule() {
   } catch (error: any) {
     console.error("Failed to save schedule:", error);
     await platform.showError("保存日程失败", error.message || String(error));
-    // 保存报错时不清除数据供用户重试
     isSaving.value = false;
   }
 }

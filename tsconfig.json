@@ -11,7 +11,8 @@
     "sourceMap": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "reka-ui/date": ["node_modules/reka-ui/dist/date.d.ts"]
     },
     "lib": ["esnext", "dom", "dom.iterable", "scripthost"],
     "skipLibCheck": true

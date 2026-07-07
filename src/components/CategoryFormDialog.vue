@@ -11,7 +11,24 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { platform } from '@/utils/platformAdapter';
+
+// 12 种高档柔和预设色板
+const presetColors = [
+  '#007aff', // 晴空蓝
+  '#34c759', // 薄荷绿
+  '#ff9500', // 橙黄
+  '#ff3b30', // 浆果红
+  '#af52de', // 浅熏紫
+  '#5856d6', // 靛蓝
+  '#ff2d55', // 桃红
+  '#4cd964', // 嫩绿
+  '#5ac8fa', // 湖蓝
+  '#ffcc00', // 金黄
+  '#8e8e93', // 石墨灰
+  '#1d1d1f'  // 极客黑
+];
 
 // 触发 saved 事件通知父组件
 const emit = defineEmits<{
@@ -132,16 +149,42 @@ async function handleSave() {
         </div>
 
         <div class="grid gap-2">
-          <Label for="category-color" class="text-sm font-medium">背景颜色</Label>
+          <Label class="text-sm font-medium">背景颜色</Label>
           <div class="flex items-center gap-3">
-            <input
-              id="category-color"
-              type="color"
-              v-model="form.color"
-              class="h-9 w-12 cursor-pointer rounded border border-input p-0"
-              :disabled="isSaving"
-            />
-            <span class="text-sm text-muted-foreground">{{ form.color }}</span>
+            <Popover>
+              <PopoverTrigger as-child>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  class="w-[130px] h-9 justify-start gap-2 border border-input"
+                  :disabled="isSaving"
+                >
+                  <span class="w-4 h-4 rounded-full border border-border" :style="{ backgroundColor: form.color }"></span>
+                  <span class="text-xs font-normal text-muted-foreground">{{ form.color }}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent class="w-[220px] p-3 gap-3 flex flex-col" align="start">
+                <span class="text-[10px] font-semibold text-muted-foreground/80">预设精美颜色</span>
+                <div class="grid grid-cols-4 gap-2">
+                  <button
+                    v-for="color in presetColors"
+                    :key="color"
+                    type="button"
+                    class="w-8 h-8 rounded-full border border-border cursor-pointer transition-transform hover:scale-110 active:scale-95 flex-shrink-0"
+                    :style="{ backgroundColor: color }"
+                    @click="form.color = color"
+                  ></button>
+                </div>
+                <div class="flex items-center justify-between border-t border-border pt-2 gap-2 mt-1">
+                  <span class="text-[10px] text-muted-foreground">自定义色彩</span>
+                  <input
+                    type="color"
+                    v-model="form.color"
+                    class="w-8 h-6 p-0 border border-input rounded cursor-pointer"
+                  />
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
