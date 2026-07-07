@@ -33,10 +33,14 @@ describe('TauriSqliteAdapter', () => {
 
     await Promise.all([p1, p2]);
 
-    const sqlOrder = executionOrder.filter(line => !line.includes('PRAGMA'));
     expect(maxConcurrent).toBe(1); // 串行队列并发应为 1
-    expect(sqlOrder[0]).toContain('INSERT INTO schedules');
-    expect(sqlOrder[1]).toContain('INSERT INTO schedules');
+    expect(mockDbConnection.execute).toHaveBeenCalledTimes(4); // 2次 PRAGMA + 2次 INSERT
+
+    // 检查具体的执行顺序，验证 PRAGMA 仅在初始化时执行了一次，随后串行执行 INSERT
+    expect(executionOrder[0]).toContain('PRAGMA journal_mode=WAL');
+    expect(executionOrder[2]).toContain('PRAGMA busy_timeout=5000');
+    expect(executionOrder[4]).toContain('INSERT INTO schedules');
+    expect(executionOrder[6]).toContain('INSERT INTO schedules');
   });
 
   it('should perform get, getAll and delete operations correctly', async () => {

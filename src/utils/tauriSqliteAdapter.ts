@@ -2,18 +2,22 @@ import { RepositoryAdapter } from './repositoryAdapter';
 
 export class TauriSqliteAdapter implements RepositoryAdapter {
   private writeQueue: Promise<any> = Promise.resolve();
+  private initializedDbPromise: Promise<any>;
 
   constructor(
     private tableName: string,
     private dbConnectionPromise: Promise<any>
-  ) {}
+  ) {
+    // 自动配置 WAL 及 busy_timeout，仅在数据库加载完毕后执行一次
+    this.initializedDbPromise = this.dbConnectionPromise.then(async (db) => {
+      await db.execute("PRAGMA journal_mode=WAL;");
+      await db.execute("PRAGMA busy_timeout=5000;");
+      return db;
+    });
+  }
 
   private async getDb() {
-    const db = await this.dbConnectionPromise;
-    // 自动配置 WAL 及 busy_timeout
-    await db.execute("PRAGMA journal_mode=WAL;");
-    await db.execute("PRAGMA busy_timeout=5000;");
-    return db;
+    return this.initializedDbPromise;
   }
 
   async get(id: string): Promise<any | null> {
