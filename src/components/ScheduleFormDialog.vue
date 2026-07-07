@@ -113,8 +113,6 @@
               无结束时间
             </Button>
           </div>
-        </div>         <input v-model="form.endTime" type="datetime-local" style="width: 100%;" />
-          </label>
         </div>
 
         <div class="form-grid">
