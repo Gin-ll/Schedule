@@ -15,7 +15,6 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       external: [
-        'tauri-plugin-sql-api',
         /^\@tauri-apps\/api/,
         /^\@tauri-apps\/plugin/
       ]

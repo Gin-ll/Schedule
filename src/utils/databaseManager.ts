@@ -8,7 +8,7 @@ export class DatabaseManager {
     if (this.dbConnection) return this.dbConnection;
     if (this.rawExecutor) return this.rawExecutor;
     
-    const Database = (await import('tauri-plugin-sql-api')).default;
+    const Database = (await import('@tauri-apps/plugin-sql')).default;
     this.dbConnection = await Database.load("sqlite:schedule.db");
     // 启用 WAL 模式和 busy_timeout 延迟
     await this.dbConnection.execute("PRAGMA journal_mode=WAL;");

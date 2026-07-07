@@ -4,7 +4,7 @@ declare module '*.vue' {
   export default component;
 }
 
-declare module 'tauri-plugin-sql-api' {
+declare module '@tauri-apps/plugin-sql' {
   const Database: {
     load(path: string): Promise<any>;
   };
