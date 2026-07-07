@@ -16,14 +16,13 @@ export class LWWConflictResolver implements ConflictResolver {
         return;
       }
 
-      const locRev = (loc as any).revision || 0;
-      const remRev = (rem as any).revision || 0;
+      const locRev = loc.revision || 0;
+      const remRev = rem.revision || 0;
 
       if (remRev > locRev) {
         mergedMap.set(rem.id, rem);
       } else if (remRev === locRev) {
         const locTime = new Date(loc.updatedAt).getTime();
-        // 补偿远程更新时间戳：基于时钟偏差计算
         const remTime = new Date(rem.updatedAt).getTime() - clockOffset;
         if (remTime > locTime) {
           mergedMap.set(rem.id, rem);
@@ -35,53 +34,68 @@ export class LWWConflictResolver implements ConflictResolver {
   }
 }
 
-export class SyncService {
+export interface SyncRemoteAdapter {
+  fetchRemoteChanges(sinceRevision: number): Promise<Schedule[]>;
+  pushLocalChanges(chunks: Schedule[], chunkIndex: number): Promise<boolean>;
+  getServerTime(): Promise<string>;
+}
+
+export class SyncManager {
   private resolver = new LWWConflictResolver();
-  private clockOffset = 0; // RemoteTime - LocalTime
+  
+  constructor(
+    private remoteAdapter: SyncRemoteAdapter,
+    private baseDelayMs: number = 1000 // 支持重置重试间隔延迟以方便测试
+  ) {}
 
-  setClockOffset(offset: number) {
-    this.clockOffset = offset;
+  private async sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async syncIncrement(localData: Schedule[], remoteData: Schedule[]): Promise<Schedule[]> {
-    return this.resolver.resolve(localData, remoteData, this.clockOffset);
+  private async runWithRetry<T>(fn: () => Promise<T>, retriesLeft: number = 3): Promise<T> {
+    try {
+      return await fn();
+    } catch (error) {
+      if (retriesLeft <= 0) {
+        throw new Error("Sync aborted: Network retry limit exceeded");
+      }
+      // 计算退避延迟
+      const delay = this.baseDelayMs * Math.pow(2, 3 - retriesLeft);
+      await this.sleep(delay);
+      return this.runWithRetry(fn, retriesLeft - 1);
+    }
   }
 
-  /**
-   * 分片传输与 ACK 双向确认机制 (伪代码/空操作桥接)
-   * 每 100 条数据分批分页传输，进行 ACK 确认
-   */
-  async syncInBatches(
-    localData: Schedule[],
-    remoteData: Schedule[],
-    sendChunk: (chunk: Schedule[], chunkIndex: number) => Promise<boolean> = async () => true,
-    receiveChunk: (chunkIndex: number) => Promise<Schedule[]> = async () => []
-  ): Promise<Schedule[]> {
+  async sync(localData: Schedule[]): Promise<Schedule[]> {
+    // 1. 同步服务器偏差时间
+    const serverTimeStr = await this.runWithRetry(() => this.remoteAdapter.getServerTime());
+    const serverTime = new Date(serverTimeStr).getTime();
+    const clockOffset = serverTime - Date.now();
+
+    // 2. 拉取远程数据变更
+    const remoteData = await this.runWithRetry(() => this.remoteAdapter.fetchRemoteChanges(0));
+
+    // 3. 分批传输本地数据并双向 ACK
     const CHUNK_SIZE = 100;
+    const totalLocalChunks = localData.length === 0 ? 1 : Math.ceil(localData.length / CHUNK_SIZE);
     
-    // 1. 发送本地数据分批（Batch Chunking）
-    const totalLocalChunks = Math.ceil(localData.length / CHUNK_SIZE);
     for (let i = 0; i < totalLocalChunks; i++) {
       const chunk = localData.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      // ACK 双向确认机制 (模拟发送 & 等待 ACK)
-      const ack = await sendChunk(chunk, i);
+      const ack = await this.runWithRetry(() => this.remoteAdapter.pushLocalChanges(chunk, i));
       if (!ack) {
         throw new Error(`ACK failed for chunk index: ${i}`);
       }
     }
 
-    // 2. 接收远程数据分批
-    const allRemoteData: Schedule[] = [...remoteData]; // 作为空操作桥接，默认直接使用传入的 remoteData
-    // 如果有自定义的分包拉取逻辑，在此拉取
-    const totalRemoteChunks = Math.ceil(remoteData.length / CHUNK_SIZE);
-    for (let i = 0; i < totalRemoteChunks; i++) {
-      const chunk = await receiveChunk(i);
-      if (chunk && chunk.length > 0) {
-        allRemoteData.push(...chunk);
-      }
-    }
+    // 4. 合并冲突
+    return this.resolver.resolve(localData, remoteData, clockOffset);
+  }
+}
 
-    // 3. 执行冲突裁决
-    return this.syncIncrement(localData, allRemoteData);
+// 维持对 SyncService 旧导出的桥接适配，防止破坏已有外部引链
+export class SyncService {
+  async syncIncrement(localData: Schedule[], remoteData: Schedule[]): Promise<Schedule[]> {
+    const resolver = new LWWConflictResolver();
+    return resolver.resolve(localData, remoteData, 0);
   }
 }

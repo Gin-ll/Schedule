@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { LWWConflictResolver } from '../src/utils/syncService';
+import { describe, it, expect, vi } from 'vitest';
+import { LWWConflictResolver, SyncManager, SyncRemoteAdapter } from '../src/utils/syncService';
 import { Schedule } from '../src/types';
 
 describe('LWWConflictResolver Clock Skew and Revision Tests', () => {
@@ -95,3 +95,22 @@ describe('LWWConflictResolver Clock Skew and Revision Tests', () => {
     expect(mergedWithCompensation[0].title).toBe('Local (Absolute 12:04)');
   });
 });
+
+describe('SyncManager Exponential Retry', () => {
+  it('should retry up to 3 times and fail on continuous network issue', async () => {
+    let callCount = 0;
+    const mockAdapter: SyncRemoteAdapter = {
+      getServerTime: () => Promise.resolve(new Date().toISOString()),
+      fetchRemoteChanges: () => Promise.resolve([]),
+      pushLocalChanges: vi.fn().mockImplementation(() => {
+        callCount++;
+        return Promise.reject(new Error("Network Down"));
+      })
+    };
+
+    const manager = new SyncManager(mockAdapter, 5); // 快速重试间隔 (5ms)
+    await expect(manager.sync([])).rejects.toThrow("Sync aborted: Network retry limit exceeded");
+    expect(callCount).toBe(4); // 初始执行 + 3次重试 = 4次
+  });
+});
+
