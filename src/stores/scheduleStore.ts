@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { Schedule, Category } from '../types';
-import { dbManager } from '../utils/databaseManager';
+import { scheduleRepo, categoryRepo } from '../utils/databaseManager';
 
 export const useScheduleStore = defineStore('schedule', {
   state: () => ({
@@ -12,31 +12,16 @@ export const useScheduleStore = defineStore('schedule', {
     async loadAll() {
       this.loading = true;
       try {
-        const rawSchedules = await dbManager.select("SELECT * FROM schedules WHERE is_deleted = 0");
-        this.schedules = rawSchedules.map((s: any) => ({
-          id: s.id,
-          title: s.title,
-          content: s.content,
-          startTime: s.start_time,
-          endTime: s.end_time || undefined,
-          recurrence: s.recurrence,
-          categoryId: s.category_id || '',
-          status: s.status,
-          reminder: s.reminder,
-          important: s.important === 1 || s.important === true,
-          createdAt: s.created_at,
-          updatedAt: s.updated_at
+        const list = await scheduleRepo.getAll();
+        this.schedules = list.map((s: any) => ({
+          ...s,
+          important: s.important === 1 || s.important === true
         }));
 
-        const rawCategories = await dbManager.select("SELECT * FROM categories WHERE is_deleted = 0");
-        this.categories = rawCategories.map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          color: c.color,
-          note: c.note || undefined
-        }));
+        const cats = await categoryRepo.getAll();
+        this.categories = cats;
       } catch (e) {
-        console.error("Failed to load store from SQLite:", e);
+        console.error("Failed to load store:", e);
       } finally {
         this.loading = false;
       }
@@ -46,21 +31,14 @@ export const useScheduleStore = defineStore('schedule', {
       const id = `sch-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       const schedule: Schedule = { ...payload, id, createdAt: now, updatedAt: now };
       this.schedules.push(schedule);
-
-      await dbManager.execute(
-        "INSERT INTO schedules (id, title, content, start_time, end_time, recurrence, category_id, status, reminder, important, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-        [id, schedule.title, schedule.content, schedule.startTime, schedule.endTime || null, schedule.recurrence, schedule.categoryId, schedule.status, schedule.reminder, schedule.important ? 1 : 0, now, now]
-      );
+      await scheduleRepo.save(id, schedule);
     },
     async updateSchedule(id: string, payload: Partial<Schedule>) {
       const now = new Date().toISOString();
       this.schedules = this.schedules.map(s => {
         if (s.id === id) {
           const updated = { ...s, ...payload, updatedAt: now, isNotified: false };
-          dbManager.execute(
-            "UPDATE schedules SET title=?, content=?, start_time=?, end_time=?, recurrence=?, category_id=?, status=?, reminder=?, important=?, updated_at=? WHERE id=?",
-            [updated.title, updated.content, updated.startTime, updated.endTime || null, updated.recurrence, updated.categoryId, updated.status, updated.reminder, updated.important ? 1 : 0, now, id]
-          );
+          scheduleRepo.save(id, updated);
           return updated;
         }
         return s;
@@ -68,39 +46,32 @@ export const useScheduleStore = defineStore('schedule', {
     },
     async deleteCategory(catId: string) {
       const now = new Date().toISOString();
-      // Cascade update associated schedules
       this.schedules = this.schedules.map(s => {
         if (s.categoryId === catId) {
-          dbManager.execute("UPDATE schedules SET category_id = '', updated_at = ? WHERE id = ?", [now, s.id]);
-          return { ...s, categoryId: '', updatedAt: now };
+          const updated = { ...s, categoryId: '', updatedAt: now };
+          scheduleRepo.save(s.id, updated);
+          return updated;
         }
         return s;
       });
       this.categories = this.categories.filter(c => c.id !== catId);
-      await dbManager.execute("UPDATE categories SET is_deleted = 1 WHERE id = ?", [catId]);
+      await categoryRepo.delete(catId);
     },
     async deleteSchedule(id: string) {
-      const now = new Date().toISOString();
       this.schedules = this.schedules.filter(s => s.id !== id);
-      await dbManager.execute("UPDATE schedules SET is_deleted = 1, updated_at = ? WHERE id = ?", [now, id]);
+      await scheduleRepo.delete(id);
     },
     async addCategory(payload: Omit<Category, 'id'>) {
       const id = `cat-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
       const category: Category = { ...payload, id };
       this.categories.push(category);
-      await dbManager.execute(
-        "INSERT INTO categories (id, name, color, note, is_deleted) VALUES (?,?,?,?,0)",
-        [id, category.name, category.color, category.note || null]
-      );
+      await categoryRepo.save(id, category);
     },
     async updateCategory(id: string, payload: Partial<Category>) {
       this.categories = this.categories.map(c => {
         if (c.id === id) {
           const updated = { ...c, ...payload };
-          dbManager.execute(
-            "UPDATE categories SET name=?, color=?, note=? WHERE id=?",
-            [updated.name, updated.color, updated.note || null, id]
-          );
+          categoryRepo.save(id, updated);
           return updated;
         }
         return c;
