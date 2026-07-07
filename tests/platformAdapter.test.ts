@@ -12,4 +12,13 @@ describe('WebPlatformAdapter', () => {
     await adapter.sendNotification('Test Title', 'Test Body');
     expect(mockNotification).toHaveBeenCalled();
   });
+
+  it('should fallback to window.alert for showError', async () => {
+    const mockAlert = vi.fn();
+    vi.stubGlobal('alert', mockAlert);
+
+    const adapter = new WebPlatformAdapter();
+    await adapter.showError('Error Title', 'Something went wrong');
+    expect(mockAlert).toHaveBeenCalledWith('Error Title: Something went wrong');
+  });
 });

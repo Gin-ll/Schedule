@@ -2,6 +2,7 @@ export interface PlatformAdapter {
   initWindow(): Promise<void>;
   sendNotification(title: string, body: string): Promise<void>;
   requestPermission(): Promise<boolean>;
+  showError(title: string, message: string): Promise<void>;
 }
 
 export class TauriPlatformAdapter implements PlatformAdapter {
@@ -27,6 +28,15 @@ export class TauriPlatformAdapter implements PlatformAdapter {
     }
     return granted;
   }
+  async showError(title: string, message: string) {
+    try {
+      const { message: tauriMessage } = await import('@tauri-apps/plugin-dialog');
+      await tauriMessage(message, { title, kind: 'error' });
+    } catch (e) {
+      console.error("Tauri dialog error:", e);
+      alert(`${title}: ${message}`);
+    }
+  }
 }
 
 export class WebPlatformAdapter implements PlatformAdapter {
@@ -45,6 +55,9 @@ export class WebPlatformAdapter implements PlatformAdapter {
     if (Notification.permission === 'granted') return true;
     const status = await Notification.requestPermission();
     return status === 'granted';
+  }
+  async showError(title: string, message: string) {
+    alert(`${title}: ${message}`);
   }
 }
 
