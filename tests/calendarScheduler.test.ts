@@ -1,8 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { generateCalendarGrid } from '../src/utils/calendarScheduler';
+import { CalendarEngine } from '../src/utils/calendarEngine';
 import { Schedule } from '../src/types';
 
-describe('generateCalendarGrid', () => {
+describe('CalendarEngine.generateGrid', () => {
+  it('should generate exactly 42 slots containing correct dates', () => {
+    const schedules: Schedule[] = [];
+    const activeDate = new Date(2026, 6, 1); // 2026-07-01
+    const grid = CalendarEngine.generateGrid(schedules, activeDate);
+
+    expect(grid.length).toBe(42);
+    expect(grid[0].dateKey).toBe('2026-06-29'); // 2026-07-01 是周三，周一为 6-29
+  });
+
   it('should allocate correct horizontal slots for overlapping schedules', () => {
     const mockSchedules: Schedule[] = [
       {
@@ -35,7 +44,7 @@ describe('generateCalendarGrid', () => {
       }
     ];
     
-    const grid = generateCalendarGrid(mockSchedules, new Date(2026, 6, 1));
+    const grid = CalendarEngine.generateGrid(mockSchedules, new Date(2026, 6, 1));
     const daySlot = grid.find(d => d.dateKey === '2026-07-07');
     expect(daySlot).toBeDefined();
     // Event A should occupy slot 0, Event B should occupy slot 1
