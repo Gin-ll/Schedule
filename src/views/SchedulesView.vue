@@ -302,6 +302,7 @@ import { useScheduleStore } from '../stores/scheduleStore';
 import { CalendarEngine, CalendarDaySlot, ScheduleInstance } from '../utils/calendarEngine';
 import { Schedule, Category, Subtask, RecurrenceType, ScheduleStatus } from '../types';
 import { Icon } from '@iconify/vue';
+import { platform } from '../utils/platformAdapter';
 
 export default defineComponent({
   name: 'SchedulesView',
@@ -663,25 +664,30 @@ export default defineComponent({
 
     // 提交日程表单
     async function saveSchedule() {
-      const payload = {
-        title: form.value.title,
-        content: form.value.content,
-        startTime: new Date(form.value.startTime).toISOString(),
-        endTime: form.value.endTime ? new Date(form.value.endTime).toISOString() : undefined,
-        recurrence: form.value.recurrence,
-        categoryId: form.value.categoryId,
-        status: form.value.status,
-        reminder: form.value.reminder,
-        important: form.value.important,
-        subtasks: form.value.subtasks
-      };
+      try {
+        const payload = {
+          title: form.value.title,
+          content: form.value.content,
+          startTime: new Date(form.value.startTime).toISOString(),
+          endTime: form.value.endTime ? new Date(form.value.endTime).toISOString() : undefined,
+          recurrence: form.value.recurrence,
+          categoryId: form.value.categoryId,
+          status: form.value.status,
+          reminder: form.value.reminder,
+          important: form.value.important,
+          subtasks: form.value.subtasks
+        };
 
-      if (isEditing.value && editingId.value) {
-        await store.updateSchedule(editingId.value, payload);
-      } else {
-        await store.addSchedule(payload);
+        if (isEditing.value && editingId.value) {
+          await store.updateSchedule(editingId.value, payload);
+        } else {
+          await store.addSchedule(payload);
+        }
+        closeDialog();
+      } catch (error: any) {
+        console.error("Failed to save schedule:", error);
+        await platform.showError("保存日程失败", error.message || String(error));
       }
-      closeDialog();
     }
 
     async function deleteSchedule(id: string) {

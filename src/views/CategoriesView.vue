@@ -88,6 +88,7 @@ import { defineComponent, ref, computed } from 'vue';
 import { useScheduleStore } from '../stores/scheduleStore';
 import { Category } from '../types';
 import { Icon } from '@iconify/vue';
+import { platform } from '../utils/platformAdapter';
 
 export default defineComponent({
   name: 'CategoriesView',
@@ -159,20 +160,25 @@ export default defineComponent({
     }
 
     async function saveCategory() {
-      if (isEditing.value && editingId.value) {
-        await store.updateCategory(editingId.value, {
-          name: form.value.name,
-          color: form.value.color,
-          note: form.value.note
-        });
-      } else {
-        await store.addCategory({
-          name: form.value.name,
-          color: form.value.color,
-          note: form.value.note
-        });
+      try {
+        if (isEditing.value && editingId.value) {
+          await store.updateCategory(editingId.value, {
+            name: form.value.name,
+            color: form.value.color,
+            note: form.value.note
+          });
+        } else {
+          await store.addCategory({
+            name: form.value.name,
+            color: form.value.color,
+            note: form.value.note
+          });
+        }
+        closeDialog();
+      } catch (error: any) {
+        console.error("Failed to save category:", error);
+        await platform.showError("保存分类失败", error.message || String(error));
       }
-      closeDialog();
     }
 
     async function deleteCategory(id: string) {
