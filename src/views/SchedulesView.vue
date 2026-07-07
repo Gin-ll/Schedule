@@ -200,99 +200,7 @@
     </div>
 
     <!-- 表单 Dialog -->
-    <dialog ref="scheduleDialogRef">
-      <form method="dialog" class="dialog-form" @submit.prevent="saveSchedule" style="padding: 20px;">
-        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-          <h3 style="margin: 0; font-size: 20px; font-weight: 700;">{{ isEditing ? '编辑日程' : '新增日程' }}</h3>
-          <button class="plain-button" type="button" @click="closeDialog" style="border-radius: 999px;">关闭</button>
-        </header>
-
-        <label style="display: flex; flex-direction: column; gap: 6px; align-items: stretch;">
-          标题
-          <input v-model="form.title" type="text" required maxlength="60" style="width: 100%;" />
-        </label>
-
-        <label style="display: flex; flex-direction: column; gap: 6px; align-items: stretch;">
-          内容
-          <textarea v-model="form.content" rows="3" maxlength="300" style="width: 100%;"></textarea>
-        </label>
-
-        <!-- 子任务容器 -->
-        <div class="dialog-subtasks-container">
-          <label>子任务</label>
-          <div class="dialog-subtask-list">
-            <div v-for="(st, index) in form.subtasks" :key="st.id" class="dialog-subtask-row" style="display: flex; align-items: center; justify-content: space-between;">
-              <span style="flex: 1; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">{{ st.title }}</span>
-              <button type="button" class="plain-button" @click="removeSubtask(index)" style="padding: 2px 8px; font-size: 11px; min-height: 24px; border-radius: 999px;">删除</button>
-            </div>
-          </div>
-          <div class="dialog-subtask-input-row" style="display: flex; gap: 8px;">
-            <input type="text" v-model="newSubtaskTitle" placeholder="输入子任务内容" maxlength="60" style="flex: 1;" />
-            <button type="button" class="plain-button" @click="addSubtask" style="border-radius: 8px;">添加</button>
-          </div>
-        </div>
-
-        <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-          <label style="display: flex; flex-direction: column; gap: 6px; align-items: stretch;">
-            开始时间
-            <input v-model="form.startTime" type="datetime-local" required style="width: 100%;" />
-          </label>
-          <label style="display: flex; flex-direction: column; gap: 6px; align-items: stretch;">
-            结束时间
-            <input v-model="form.endTime" type="datetime-local" style="width: 100%;" />
-          </label>
-        </div>
-
-        <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px;">
-          <label style="display: flex; flex-direction: column; gap: 6px; align-items: stretch;">
-            分类
-            <select v-model="form.categoryId" style="width: 100%;">
-              <option value="">未分类</option>
-              <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-            </select>
-          </label>
-          <label style="display: flex; flex-direction: column; gap: 6px; align-items: stretch;">
-            循环规则
-            <select v-model="form.recurrence" style="width: 100%;">
-              <option value="none">不循环</option>
-              <option value="daily">每天</option>
-              <option value="weekly">每周</option>
-              <option value="monthly">每月</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px;">
-          <label style="display: flex; flex-direction: column; gap: 6px; align-items: stretch;">
-            状态
-            <select v-model="form.status" style="width: 100%;">
-              <option value="pending">未开始</option>
-              <option value="in-progress">进行中</option>
-              <option value="completed">已完成</option>
-              <option value="delayed">已延期</option>
-            </select>
-          </label>
-          <label style="display: flex; flex-direction: column; gap: 6px; align-items: stretch;">
-            提醒
-            <select v-model="form.reminder" style="width: 100%;">
-              <option value="none">无</option>
-              <option value="10m">提前 10 分钟</option>
-              <option value="30m">提前 30 分钟</option>
-              <option value="1h">提前 1 小时</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="check-row" style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-          <input id="formImportant" type="checkbox" v-model="form.important" style="width: 18px; height: 18px; cursor: pointer;" />
-          <label for="formImportant" style="font-size: 13px; color: var(--text); cursor: pointer; user-select: none;">标记为重点日程</label>
-        </div>
-
-        <footer style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px;">
-          <button class="primary-button" type="submit" style="padding: 6px 20px;">保存</button>
-        </footer>
-      </form>
-    </dialog>
+    <ScheduleFormDialog ref="scheduleFormDialogRef" :categories="categories" />
   </div>
 </template>
 
@@ -303,11 +211,13 @@ import { CalendarEngine, CalendarDaySlot, ScheduleInstance } from '../utils/cale
 import { Schedule, Category, Subtask, RecurrenceType, ScheduleStatus } from '../types';
 import { Icon } from '@iconify/vue';
 import { platform } from '../utils/platformAdapter';
+import ScheduleFormDialog from '../components/ScheduleFormDialog.vue';
 
 export default defineComponent({
   name: 'SchedulesView',
   components: {
-    Icon
+    Icon,
+    ScheduleFormDialog
   },
   setup() {
     const store = useScheduleStore();
@@ -324,23 +234,8 @@ export default defineComponent({
     const calendarViewMode = ref<'dots' | 'names'>('names');
     const selectedDateKey = ref(toDateKey(new Date()));
 
-    // 表单状态
-    const scheduleDialogRef = ref<HTMLDialogElement | null>(null);
-    const isEditing = ref(false);
-    const editingId = ref<string | null>(null);
-    const newSubtaskTitle = ref('');
-    const form = ref({
-      title: '',
-      content: '',
-      startTime: '',
-      endTime: '',
-      recurrence: 'none' as RecurrenceType,
-      categoryId: '',
-      status: 'pending' as ScheduleStatus,
-      reminder: 'none' as 'none' | '10m' | '30m' | '1h',
-      important: false,
-      subtasks: [] as Subtask[]
-    });
+    // 表单子组件 Ref
+    const scheduleFormDialogRef = ref<InstanceType<typeof ScheduleFormDialog> | null>(null);
 
     const categories = computed(() => store.categories);
 
@@ -589,105 +484,11 @@ export default defineComponent({
 
     // Dialog 操作
     function openAddDialog() {
-      isEditing.value = false;
-      editingId.value = null;
-      newSubtaskTitle.value = '';
-      
-      // 当前日期加上 1 小时的默认值
-      const now = new Date();
-      now.setMinutes(0, 0, 0);
-      const startLocal = new Date(now.getTime() + 60 * 60 * 1000).toLocaleString('sv').slice(0, 16).replace(' ', 'T');
-      const endLocal = new Date(now.getTime() + 2 * 60 * 60 * 1000).toLocaleString('sv').slice(0, 16).replace(' ', 'T');
-
-      form.value = {
-        title: '',
-        content: '',
-        startTime: startLocal,
-        endTime: endLocal,
-        recurrence: 'none',
-        categoryId: '',
-        status: 'pending',
-        reminder: 'none',
-        important: false,
-        subtasks: []
-      };
-
-      scheduleDialogRef.value?.showModal();
+      scheduleFormDialogRef.value?.open();
     }
 
     function openEditDialog(schedule: Schedule) {
-      isEditing.value = true;
-      editingId.value = schedule.id;
-      newSubtaskTitle.value = '';
-
-      const startLocal = new Date(schedule.startTime).toLocaleString('sv').slice(0, 16).replace(' ', 'T');
-      const endLocal = schedule.endTime 
-        ? new Date(schedule.endTime).toLocaleString('sv').slice(0, 16).replace(' ', 'T')
-        : '';
-
-      form.value = {
-        title: schedule.title,
-        content: schedule.content || '',
-        startTime: startLocal,
-        endTime: endLocal,
-        recurrence: schedule.recurrence,
-        categoryId: schedule.categoryId || '',
-        status: schedule.status,
-        reminder: schedule.reminder || 'none',
-        important: schedule.important,
-        subtasks: schedule.subtasks ? JSON.parse(JSON.stringify(schedule.subtasks)) : []
-      };
-
-      scheduleDialogRef.value?.showModal();
-    }
-
-    function closeDialog() {
-      scheduleDialogRef.value?.close();
-    }
-
-    // 表单子任务操作
-    function addSubtask() {
-      const title = newSubtaskTitle.value.trim();
-      if (!title) return;
-      const newSt: Subtask = {
-        id: `st-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
-        title,
-        completed: false
-      };
-      form.value.subtasks.push(newSt);
-      newSubtaskTitle.value = '';
-    }
-
-    function removeSubtask(index: number) {
-      form.value.subtasks.splice(index, 1);
-    }
-
-    // 提交日程表单
-    async function saveSchedule() {
-      try {
-        const payload = {
-          title: form.value.title,
-          content: form.value.content,
-          startTime: new Date(form.value.startTime).toISOString(),
-          endTime: form.value.endTime ? new Date(form.value.endTime).toISOString() : undefined,
-          recurrence: form.value.recurrence,
-          categoryId: form.value.categoryId,
-          status: form.value.status,
-          reminder: form.value.reminder,
-          important: form.value.important,
-          subtasks: form.value.subtasks
-        };
-
-        if (isEditing.value && editingId.value) {
-          await store.updateSchedule(editingId.value, payload);
-        } else {
-          await store.addSchedule(payload);
-        }
-        closeDialog();
-      } catch (error: any) {
-        console.error("Failed to save schedule:", error);
-        await platform.showError("保存日程失败", error.message || String(error));
-      }
+      scheduleFormDialogRef.value?.open(schedule.id);
     }
 
     async function deleteSchedule(id: string) {
@@ -734,16 +535,9 @@ export default defineComponent({
       getCompletedSubtaskCount,
 
       // Dialog
-      scheduleDialogRef,
-      isEditing,
-      newSubtaskTitle,
-      form,
+      scheduleFormDialogRef,
       openAddDialog,
       openEditDialog,
-      closeDialog,
-      addSubtask,
-      removeSubtask,
-      saveSchedule,
       deleteSchedule
     };
   }

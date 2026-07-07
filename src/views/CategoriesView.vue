@@ -53,33 +53,7 @@
     </div>
 
     <!-- 表单 Dialog -->
-    <dialog ref="categoryDialogRef">
-      <form method="dialog" class="dialog-form" @submit.prevent="saveCategory" style="padding: 20px; width: 320px;">
-        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-          <h3 style="margin: 0; font-size: 18px; font-weight: 700;">{{ isEditing ? '编辑分类' : '新增分类' }}</h3>
-          <button class="plain-button" type="button" @click="closeDialog" style="border-radius: 999px;">关闭</button>
-        </header>
-
-        <label style="display: flex; flex-direction: column; gap: 6px; align-items: stretch; margin-bottom: 12px;">
-          名称
-          <input v-model="form.name" type="text" required maxlength="20" style="width: 100%;" />
-        </label>
-
-        <label style="display: flex; flex-direction: column; gap: 6px; align-items: stretch; margin-bottom: 12px;">
-          背景颜色
-          <input v-model="form.color" type="color" required style="width: 100%; height: 38px; padding: 0; border: none; cursor: pointer;" />
-        </label>
-
-        <label style="display: flex; flex-direction: column; gap: 6px; align-items: stretch; margin-bottom: 12px;">
-          备注
-          <input v-model="form.note" type="text" maxlength="100" style="width: 100%;" />
-        </label>
-
-        <footer style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px;">
-          <button class="primary-button" type="submit" style="padding: 6px 20px;">保存</button>
-        </footer>
-      </form>
-    </dialog>
+    <CategoryFormDialog ref="categoryFormDialogRef" />
   </div>
 </template>
 
@@ -89,24 +63,18 @@ import { useScheduleStore } from '../stores/scheduleStore';
 import { Category } from '../types';
 import { Icon } from '@iconify/vue';
 import { platform } from '../utils/platformAdapter';
+import CategoryFormDialog from '../components/CategoryFormDialog.vue';
 
 export default defineComponent({
   name: 'CategoriesView',
   components: {
-    Icon
+    Icon,
+    CategoryFormDialog
   },
   setup() {
     const store = useScheduleStore();
     
-    const categoryDialogRef = ref<HTMLDialogElement | null>(null);
-    const isEditing = ref(false);
-    const editingId = ref<string | null>(null);
-    
-    const form = ref({
-      name: '',
-      color: '#007aff',
-      note: ''
-    });
+    const categoryFormDialogRef = ref<InstanceType<typeof CategoryFormDialog> | null>(null);
 
     const categories = computed(() => store.categories);
 
@@ -134,51 +102,11 @@ export default defineComponent({
     }
 
     function openAddDialog() {
-      isEditing.value = false;
-      editingId.value = null;
-      form.value = {
-        name: '',
-        color: '#007aff',
-        note: ''
-      };
-      categoryDialogRef.value?.showModal();
+      categoryFormDialogRef.value?.open();
     }
 
     function openEditDialog(category: Category) {
-      isEditing.value = true;
-      editingId.value = category.id;
-      form.value = {
-        name: category.name,
-        color: category.color,
-        note: category.note || ''
-      };
-      categoryDialogRef.value?.showModal();
-    }
-
-    function closeDialog() {
-      categoryDialogRef.value?.close();
-    }
-
-    async function saveCategory() {
-      try {
-        if (isEditing.value && editingId.value) {
-          await store.updateCategory(editingId.value, {
-            name: form.value.name,
-            color: form.value.color,
-            note: form.value.note
-          });
-        } else {
-          await store.addCategory({
-            name: form.value.name,
-            color: form.value.color,
-            note: form.value.note
-          });
-        }
-        closeDialog();
-      } catch (error: any) {
-        console.error("Failed to save category:", error);
-        await platform.showError("保存分类失败", error.message || String(error));
-      }
+      categoryFormDialogRef.value?.open(category.id);
     }
 
     async function deleteCategory(id: string) {
@@ -195,13 +123,9 @@ export default defineComponent({
     return {
       categories,
       getStats,
-      categoryDialogRef,
-      isEditing,
-      form,
+      categoryFormDialogRef,
       openAddDialog,
       openEditDialog,
-      closeDialog,
-      saveCategory,
       deleteCategory
     };
   }
