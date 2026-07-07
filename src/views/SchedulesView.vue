@@ -692,7 +692,12 @@ export default defineComponent({
 
     async function deleteSchedule(id: string) {
       if (confirm('确认删除此日程？')) {
-        await store.deleteSchedule(id);
+        try {
+          await store.deleteSchedule(id);
+        } catch (error: any) {
+          console.error("Failed to delete schedule:", error);
+          await platform.showError("删除日程失败", error.message || String(error));
+        }
       }
     }
 

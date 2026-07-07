@@ -183,7 +183,12 @@ export default defineComponent({
 
     async function deleteCategory(id: string) {
       if (confirm('确认删除分类？属于该分类的日程将变为未分类状态。')) {
-        await store.deleteCategory(id);
+        try {
+          await store.deleteCategory(id);
+        } catch (error: any) {
+          console.error("Failed to delete category:", error);
+          await platform.showError("删除分类失败", error.message || String(error));
+        }
       }
     }
 
