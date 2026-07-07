@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { Schedule, Category } from '../types';
 import { scheduleRepo, categoryRepo } from '../utils/databaseManager';
+import { SyncManager, SyncRemoteAdapter } from '../utils/syncService';
 
 export const useScheduleStore = defineStore('schedule', {
   state: () => ({
@@ -76,6 +77,24 @@ export const useScheduleStore = defineStore('schedule', {
         }
         return c;
       });
+    },
+    async syncWithRemote(remoteAdapter: SyncRemoteAdapter) {
+      this.loading = true;
+      try {
+        const syncManager = new SyncManager(remoteAdapter);
+        const merged = await syncManager.sync(this.schedules);
+        
+        // 增量存回本地 repository
+        for (const item of merged) {
+          await scheduleRepo.save(item.id, item);
+        }
+        await this.loadAll();
+      } catch (e) {
+        console.error("Sync failed:", e);
+        throw e;
+      } finally {
+        this.loading = false;
+      }
     }
   }
 });

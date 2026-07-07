@@ -40,6 +40,13 @@ export interface SyncRemoteAdapter {
   getServerTime(): Promise<string>;
 }
 
+export class SyncFailedException extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SyncFailedException';
+  }
+}
+
 export class SyncManager {
   private resolver = new LWWConflictResolver();
   
@@ -55,9 +62,9 @@ export class SyncManager {
   private async runWithRetry<T>(fn: () => Promise<T>, retriesLeft: number = 3): Promise<T> {
     try {
       return await fn();
-    } catch (error) {
+    } catch (error: any) {
       if (retriesLeft <= 0) {
-        throw new Error("Sync aborted: Network retry limit exceeded");
+        throw new SyncFailedException(error.message || "Sync aborted: Network retry limit exceeded");
       }
       // 计算退避延迟
       const delay = this.baseDelayMs * Math.pow(2, 3 - retriesLeft);
@@ -77,14 +84,17 @@ export class SyncManager {
 
     // 3. 分批传输本地数据并双向 ACK
     const CHUNK_SIZE = 100;
-    const totalLocalChunks = localData.length === 0 ? 1 : Math.ceil(localData.length / CHUNK_SIZE);
+    const totalLocalChunks = Math.ceil(localData.length / CHUNK_SIZE);
     
     for (let i = 0; i < totalLocalChunks; i++) {
       const chunk = localData.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      const ack = await this.runWithRetry(() => this.remoteAdapter.pushLocalChanges(chunk, i));
-      if (!ack) {
-        throw new Error(`ACK failed for chunk index: ${i}`);
-      }
+      await this.runWithRetry(async () => {
+        const ack = await this.remoteAdapter.pushLocalChanges(chunk, i);
+        if (!ack) {
+          throw new SyncFailedException(`ACK failed for chunk index: ${i}`);
+        }
+        return ack;
+      });
     }
 
     // 4. 合并冲突

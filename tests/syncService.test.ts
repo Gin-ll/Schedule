@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { LWWConflictResolver, SyncManager, SyncRemoteAdapter } from '../src/utils/syncService';
+import { LWWConflictResolver, SyncManager, SyncRemoteAdapter, SyncFailedException } from '../src/utils/syncService';
 import { Schedule } from '../src/types';
 
 describe('LWWConflictResolver Clock Skew and Revision Tests', () => {
@@ -97,7 +97,21 @@ describe('LWWConflictResolver Clock Skew and Revision Tests', () => {
 });
 
 describe('SyncManager Exponential Retry', () => {
-  it('should retry up to 3 times and fail on continuous network issue', async () => {
+  const dummySchedule: Schedule = {
+    id: 'sch-1',
+    title: 'Dummy',
+    content: '',
+    startTime: new Date().toISOString(),
+    recurrence: 'none',
+    categoryId: '',
+    status: 'pending',
+    reminder: 'none',
+    important: false,
+    createdAt: '',
+    updatedAt: ''
+  };
+
+  it('should retry up to 3 times and fail with SyncFailedException on continuous network issue', async () => {
     let callCount = 0;
     const mockAdapter: SyncRemoteAdapter = {
       getServerTime: () => Promise.resolve(new Date().toISOString()),
@@ -109,8 +123,24 @@ describe('SyncManager Exponential Retry', () => {
     };
 
     const manager = new SyncManager(mockAdapter, 5); // 快速重试间隔 (5ms)
-    await expect(manager.sync([])).rejects.toThrow("Sync aborted: Network retry limit exceeded");
+    await expect(manager.sync([dummySchedule])).rejects.toThrowError(SyncFailedException);
     expect(callCount).toBe(4); // 初始执行 + 3次重试 = 4次
+  });
+
+  it('should retry on ACK = false and throw SyncFailedException', async () => {
+    let callCount = 0;
+    const mockAdapter: SyncRemoteAdapter = {
+      getServerTime: () => Promise.resolve(new Date().toISOString()),
+      fetchRemoteChanges: () => Promise.resolve([]),
+      pushLocalChanges: vi.fn().mockImplementation(() => {
+        callCount++;
+        return Promise.resolve(false); // 模拟返回 false
+      })
+    };
+
+    const manager = new SyncManager(mockAdapter, 5);
+    await expect(manager.sync([dummySchedule])).rejects.toThrowError(SyncFailedException);
+    expect(callCount).toBe(4);
   });
 });
 

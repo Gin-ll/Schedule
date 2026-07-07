@@ -99,12 +99,16 @@ export class CalendarEngine {
           const key = toDateKey(tempDate);
           if (!daySlotsMap[key]) daySlotsMap[key] = [null, null, null];
           daySlotsMap[key][availableSlot] = inst;
-          
-          if (!dayAllInstances[key]) dayAllInstances[key] = [];
-          dayAllInstances[key].push(inst);
-          
           tempDate.setDate(tempDate.getDate() + 1);
         }
+      }
+
+      let tempDate = new Date(curDate);
+      while (tempDate <= endDate) {
+        const key = toDateKey(tempDate);
+        if (!dayAllInstances[key]) dayAllInstances[key] = [];
+        dayAllInstances[key].push(inst);
+        tempDate.setDate(tempDate.getDate() + 1);
       }
     });
 

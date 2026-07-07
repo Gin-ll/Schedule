@@ -45,8 +45,38 @@ describe('TauriSqliteAdapter', () => {
 
   it('should perform get, getAll and delete operations correctly', async () => {
     const mockData = [
-      { data: JSON.stringify({ id: 'k1', val: 'a' }) },
-      { data: JSON.stringify({ id: 'k2', val: 'b' }) }
+      {
+        id: 'k1',
+        title: 'Event 1',
+        content: 'Content 1',
+        start_time: '2026-07-07T12:00:00Z',
+        end_time: null,
+        recurrence: 'none',
+        category_id: '',
+        status: 'pending',
+        reminder: 'none',
+        important: 0,
+        created_at: '2026-07-07T12:00:00Z',
+        updated_at: '2026-07-07T12:00:00Z',
+        is_deleted: 0,
+        revision: 1
+      },
+      {
+        id: 'k2',
+        title: 'Event 2',
+        content: 'Content 2',
+        start_time: '2026-07-07T13:00:00Z',
+        end_time: null,
+        recurrence: 'none',
+        category_id: '',
+        status: 'pending',
+        reminder: 'none',
+        important: 1,
+        created_at: '2026-07-07T13:00:00Z',
+        updated_at: '2026-07-07T13:00:00Z',
+        is_deleted: 0,
+        revision: 1
+      }
     ];
 
     const mockDbConnection = {
@@ -54,7 +84,7 @@ describe('TauriSqliteAdapter', () => {
       select: vi.fn().mockImplementation((sql: string, params?: any[]) => {
         if (sql.includes('WHERE id = ?')) {
           const id = params?.[0];
-          const found = mockData.find(item => JSON.parse(item.data).id === id);
+          const found = mockData.find(item => item.id === id);
           return Promise.resolve(found ? [found] : []);
         }
         return Promise.resolve(mockData);
@@ -67,15 +97,60 @@ describe('TauriSqliteAdapter', () => {
     );
 
     const item = await adapter.get('k1');
-    expect(item).toEqual({ id: 'k1', val: 'a' });
+    expect(item).toEqual({
+      id: 'k1',
+      title: 'Event 1',
+      content: 'Content 1',
+      startTime: '2026-07-07T12:00:00Z',
+      endTime: undefined,
+      recurrence: 'none',
+      categoryId: '',
+      status: 'pending',
+      reminder: 'none',
+      important: false,
+      createdAt: '2026-07-07T12:00:00Z',
+      updatedAt: '2026-07-07T12:00:00Z',
+      isDeleted: 0,
+      revision: 1
+    });
 
     const nonExistent = await adapter.get('k3');
     expect(nonExistent).toBeNull();
 
     const allItems = await adapter.getAll();
     expect(allItems).toEqual([
-      { id: 'k1', val: 'a' },
-      { id: 'k2', val: 'b' }
+      {
+        id: 'k1',
+        title: 'Event 1',
+        content: 'Content 1',
+        startTime: '2026-07-07T12:00:00Z',
+        endTime: undefined,
+        recurrence: 'none',
+        categoryId: '',
+        status: 'pending',
+        reminder: 'none',
+        important: false,
+        createdAt: '2026-07-07T12:00:00Z',
+        updatedAt: '2026-07-07T12:00:00Z',
+        isDeleted: 0,
+        revision: 1
+      },
+      {
+        id: 'k2',
+        title: 'Event 2',
+        content: 'Content 2',
+        startTime: '2026-07-07T13:00:00Z',
+        endTime: undefined,
+        recurrence: 'none',
+        categoryId: '',
+        status: 'pending',
+        reminder: 'none',
+        important: true,
+        createdAt: '2026-07-07T13:00:00Z',
+        updatedAt: '2026-07-07T13:00:00Z',
+        isDeleted: 0,
+        revision: 1
+      }
     ]);
 
     await adapter.delete('k1');
