@@ -2,7 +2,7 @@
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-mark" title="Schedule">S</span>
+        <img class="brand-mark" src="@/assets/logo.png" title="Schedule" alt="Logo" />
       </div>
       <nav class="nav">
         <!-- 路由到 schedules 视图 -->
