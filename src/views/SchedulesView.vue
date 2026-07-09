@@ -2,242 +2,261 @@
   <div class="page active">
     <header class="page-header">
       <div>
-        <p class="eyebrow">{{ activeView === 'list' ? 'Today board' : 'Monthly view' }}</p>
-        <h2>{{ activeView === 'list' ? '日程' : '日历' }}</h2>
+        <p class="eyebrow">Today board</p>
+        <h2>日程</h2>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <div class="segmented">
-          <button :class="{ active: activeView === 'list' }" @click="activeView = 'list'" type="button">列表</button>
-          <button :class="{ active: activeView === 'calendar' }" @click="activeView = 'calendar'" type="button">日历</button>
-        </div>
         <button class="primary-icon-btn" @click="openAddDialog" type="button" aria-label="新增日程" title="新增日程">
           <Icon icon="lucide:plus" width="20" height="20" />
         </button>
       </div>
     </header>
 
-    <div class="toolbar" v-if="activeView === 'list'">
+    <div class="toolbar">
       <input type="search" v-model="searchQuery" placeholder="搜索日程名称或内容...." class="search-input" style="max-width: none; width: 100%;" />
     </div>
 
     <!-- 列表视图 -->
-    <div v-if="activeView === 'list'" class="content-panel active list-layout-with-sidebar">
+    <div class="content-panel active list-layout-with-sidebar">
       <aside class="smart-sidebar">
         <ul class="smart-list-filters">
-          <li :class="{ active: listFilter === 'today' }" @click="listFilter = 'today'">
+          <li :class="{ active: activeFilterSection === 'time' && listFilter === 'today' }" @click="selectListFilter('today')">
             <Icon icon="lucide:clock" width="16" height="16" />
             今天
             <span class="count-badge">{{ counts.today }}</span>
           </li>
-          <li :class="{ active: listFilter === 'tomorrow' }" @click="listFilter = 'tomorrow'">
+          <li :class="{ active: activeFilterSection === 'time' && listFilter === 'tomorrow' }" @click="selectListFilter('tomorrow')">
             <Icon icon="lucide:home" width="16" height="16" />
             明天
             <span class="count-badge">{{ counts.tomorrow }}</span>
           </li>
-          <li :class="{ active: listFilter === 'next7days' }" @click="listFilter = 'next7days'">
+          <li :class="{ active: activeFilterSection === 'time' && listFilter === 'next7days' }" @click="selectListFilter('next7days')">
             <Icon icon="lucide:zap" width="16" height="16" />
             未来 7 天
             <span class="count-badge">{{ counts.next7days }}</span>
           </li>
-          <li :class="{ active: listFilter === 'all' }" @click="listFilter = 'all'">
+          <li :class="{ active: activeFilterSection === 'time' && listFilter === 'all' }" @click="selectListFilter('all')">
             <Icon icon="lucide:calendar-days" width="16" height="16" />
             全部日程
             <span class="count-badge">{{ counts.all }}</span>
           </li>
+          <div class="sidebar-divider"></div>
+          <li :class="{ active: activeFilterSection === 'time' && listFilter === 'overdue' }" @click="selectListFilter('overdue')">
+            <Icon icon="lucide:alert-triangle" width="16" height="16" style="color: #ff3b30;" />
+            已逾期
+            <span class="count-badge" style="background-color: rgba(255, 59, 48, 0.1); color: #ff3b30;">{{ counts.overdue }}</span>
+          </li>
+          <li :class="{ active: activeFilterSection === 'time' && listFilter === 'completed' }" @click="selectListFilter('completed')">
+            <Icon icon="lucide:check-check" width="16" height="16" style="color: #34c759;" />
+            已完成
+            <span class="count-badge" style="background-color: rgba(52, 199, 89, 0.1); color: #34c759;">{{ counts.completed }}</span>
+          </li>
         </ul>
         <div class="sidebar-divider"></div>
         <ul class="smart-list-filters">
-          <li :class="{ active: categoryFilter === 'all' }" @click="categoryFilter = 'all'">
-            <span class="category-dot" style="background-color: var(--primary);"></span>
-            所有分类
-            <span class="count-badge">{{ counts.catAll }}</span>
-          </li>
-          <li v-for="cat in categories" :key="cat.id" :class="{ active: categoryFilter === cat.id }" @click="categoryFilter = cat.id">
+          <li v-for="cat in categories" :key="cat.id" :class="{ active: activeFilterSection === 'category' && categoryFilter === cat.id }" @click="selectCategoryFilter(cat.id)">
             <span class="category-dot" :style="{ backgroundColor: cat.color }"></span>
             {{ cat.name }}
             <span class="count-badge">{{ getCategoryCount(cat.id) }}</span>
           </li>
+          <li :class="{ active: activeFilterSection === 'category' && categoryFilter === '' }" @click="selectCategoryFilter('')">
+            <span class="category-dot" style="background-color: #8E8E93;"></span>
+            未分类
+            <span class="count-badge">{{ getCategoryCount('') }}</span>
+          </li>
+          <li :class="{ active: activeFilterSection === 'category' && categoryFilter === 'all' }" @click="selectCategoryFilter('all')">
+            <span class="category-dot" style="background-color: var(--primary);"></span>
+            所有分类
+            <span class="count-badge">{{ counts.catAll }}</span>
+          </li>
         </ul>
       </aside>
-      <div class="schedule-list-container">
-        <div class="schedule-list">
-          <article v-for="schedule in visibleSchedules" :key="schedule.id" class="schedule-card">
-            <div class="schedule-title-row" style="align-items: center; gap: 10px;">
-              <input type="checkbox" :checked="schedule.status === 'completed'" @change="toggleScheduleStatus(schedule)" style="width: 20px; height: 20px; cursor: pointer; flex-shrink: 0; margin: 0;" />
-              <h3 :style="{ textDecoration: schedule.status === 'completed' ? 'line-through' : 'none' }" style="flex: 1; word-break: break-all;">
-                {{ schedule.title }}
-              </h3>
-              <div class="card-actions" style="display: flex; gap: 4px;">
-                <button class="action-icon-btn" type="button" @click="openEditDialog(schedule)" aria-label="编辑" title="编辑">
-                  <Icon icon="lucide:edit-3" width="16" height="16" />
-                </button>
-                <button class="action-icon-btn danger" type="button" @click="deleteSchedule(schedule.id)" aria-label="删除" title="删除">
-                  <Icon icon="lucide:trash-2" width="16" height="16" />
-                </button>
-              </div>
+      <div class="schedule-list-container" style="display: flex; flex-direction: column;">
+        <div class="schedule-list" v-if="visibleSchedules.length > 0" style="display: flex; flex-direction: column; gap: 0;">
+          <!-- 未完成日程区块 -->
+          <div v-if="pendingSchedules.length > 0" style="display: flex; flex-direction: column; margin-bottom: 16px;">
+            <div class="section-toggle-header" @click="isPendingExpanded = !isPendingExpanded" style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; margin-bottom: 12px; transition: color 0.2s;">
+              <Icon :icon="isPendingExpanded ? 'lucide:chevron-down' : 'lucide:chevron-right'" width="16" height="16" />
+              <span style="font-size: 13px; font-weight: 600; tracking: 0.05em;">未完成</span>
+              <span class="count-badge" style="font-size: 11px; padding: 2px 6px; border-radius: 9999px; background: var(--border); color: var(--text); font-weight: bold; line-height: 1;">{{ pendingSchedules.length }}</span>
+              <div class="divider-line" style="flex-grow: 1; border-top: 1px dashed var(--border); margin-left: 8px; opacity: 0.6; transition: opacity 0.2s;"></div>
             </div>
-            <p class="schedule-content" v-if="schedule.content">{{ schedule.content }}</p>
             
-            <!-- 子任务展开展示 -->
-            <details v-if="schedule.subtasks && schedule.subtasks.length > 0" class="subtasks-details">
-              <summary class="subtasks-summary">
-                <span style="display:inline-block; margin-left: 4px;">子任务 ({{ getCompletedSubtaskCount(schedule) }}/{{ schedule.subtasks.length }})</span>
-              </summary>
-              <div class="card-subtasks">
-                <label v-for="st in schedule.subtasks" :key="st.id" class="card-subtask-item" :class="{ completed: st.completed }">
-                  <input type="checkbox" :checked="st.completed" @change="toggleSubtask(schedule, st.id)" />
-                  <span>{{ st.title }}</span>
-                </label>
-              </div>
-            </details>
+            <div v-show="isPendingExpanded" style="display: flex; flex-direction: column; gap: 12px;">
+              <article v-for="schedule in pendingSchedules" :key="schedule.id" class="schedule-card">
+                <div class="schedule-title-row" style="align-items: center; gap: 10px;">
+                  <input type="checkbox" :checked="schedule.status === 'completed'" @change="toggleScheduleStatus(schedule)" style="width: 20px; height: 20px; cursor: pointer; flex-shrink: 0; margin: 0;" />
+                  <h3 :style="{ textDecoration: schedule.status === 'completed' ? 'line-through' : 'none' }" style="flex: 1; word-break: break-all;">
+                    {{ schedule.title }}
+                  </h3>
+                  <div class="card-actions" style="display: flex; gap: 4px;">
+                    <button class="action-icon-btn" type="button" @click="openEditDialog(schedule)" aria-label="编辑" title="编辑">
+                      <Icon icon="lucide:edit-3" width="16" height="16" />
+                    </button>
+                    <button class="action-icon-btn danger" type="button" @click="deleteSchedule(schedule.id)" aria-label="删除" title="删除">
+                      <Icon icon="lucide:trash-2" width="16" height="16" />
+                    </button>
+                  </div>
+                </div>
+                <p class="schedule-content" v-if="schedule.content">{{ schedule.content }}</p>
+                
+                <!-- 子任务展开展示 -->
+                <details v-if="schedule.subtasks && schedule.subtasks.length > 0" class="subtasks-details">
+                  <summary class="subtasks-summary">
+                    <span style="display:inline-block; margin-left: 4px;">子任务 ({{ getCompletedSubtaskCount(schedule) }}/{{ schedule.subtasks.length }})</span>
+                  </summary>
+                  <div class="card-subtasks">
+                    <label v-for="st in schedule.subtasks" :key="st.id" class="card-subtask-item" :class="{ completed: st.completed }">
+                      <input type="checkbox" :checked="st.completed" @change="toggleSubtask(schedule, st.id)" />
+                      <span>{{ st.title }}</span>
+                    </label>
+                  </div>
+                </details>
 
-            <div class="schedule-meta" style="margin-top: 10px;">
-              <span class="tag">{{ formatInterval(schedule.startTime, schedule.endTime, schedule.recurrence) }}</span>
-              <span class="tag" :style="getCategoryStyle(schedule.categoryId)">
-                {{ getCategoryName(schedule.categoryId) }}
-              </span>
-              <span class="tag" :class="getStatusClass(schedule)">{{ getStatusLabel(schedule) }}</span>
-              <span class="tag important" v-if="schedule.important">重点</span>
+                <div class="schedule-meta" style="margin-top: 10px;">
+                  <span class="tag">{{ formatInterval(schedule.startTime, schedule.endTime, schedule.recurrence) }}</span>
+                  <span class="tag" :style="getCategoryStyle(schedule.categoryId)">
+                    {{ getCategoryName(schedule.categoryId) }}
+                  </span>
+                  <span class="tag" :class="getStatusClass(schedule)">{{ getStatusLabel(schedule) }}</span>
+                  <span class="tag important" v-if="schedule.important">重点</span>
+                </div>
+              </article>
             </div>
-          </article>
-          <div v-if="visibleSchedules.length === 0" class="empty-state">暂无日程</div>
+          </div>
+
+          <!-- 已完成日程区块 -->
+          <div v-if="completedSchedules.length > 0" style="display: flex; flex-direction: column; margin-top: 8px;">
+            <div class="section-toggle-header" @click="isCompletedExpanded = !isCompletedExpanded" style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; margin-bottom: 12px; transition: color 0.2s;">
+              <Icon :icon="isCompletedExpanded ? 'lucide:chevron-down' : 'lucide:chevron-right'" width="16" height="16" />
+              <span style="font-size: 13px; font-weight: 600; tracking: 0.05em;">已完成</span>
+              <span class="count-badge" style="font-size: 11px; padding: 2px 6px; border-radius: 9999px; background: var(--border); color: var(--text); font-weight: bold; line-height: 1;">{{ completedSchedules.length }}</span>
+              <div class="divider-line" style="flex-grow: 1; border-top: 1px dashed var(--border); margin-left: 8px; opacity: 0.6; transition: opacity 0.2s;"></div>
+            </div>
+            
+            <div v-show="isCompletedExpanded" style="display: flex; flex-direction: column; gap: 12px;">
+              <article v-for="schedule in completedSchedules" :key="schedule.id" class="schedule-card" style="opacity: 0.8;">
+                <div class="schedule-title-row" style="align-items: center; gap: 10px;">
+                  <input type="checkbox" :checked="schedule.status === 'completed'" @change="toggleScheduleStatus(schedule)" style="width: 20px; height: 20px; cursor: pointer; flex-shrink: 0; margin: 0;" />
+                  <h3 :style="{ textDecoration: schedule.status === 'completed' ? 'line-through' : 'none' }" style="flex: 1; word-break: break-all;">
+                    {{ schedule.title }}
+                  </h3>
+                  <div class="card-actions" style="display: flex; gap: 4px;">
+                    <button class="action-icon-btn" type="button" @click="openEditDialog(schedule)" aria-label="编辑" title="编辑">
+                      <Icon icon="lucide:edit-3" width="16" height="16" />
+                    </button>
+                    <button class="action-icon-btn danger" type="button" @click="deleteSchedule(schedule.id)" aria-label="删除" title="删除">
+                      <Icon icon="lucide:trash-2" width="16" height="16" />
+                    </button>
+                  </div>
+                </div>
+                <p class="schedule-content" v-if="schedule.content">{{ schedule.content }}</p>
+                
+                <!-- 子任务展开展示 -->
+                <details v-if="schedule.subtasks && schedule.subtasks.length > 0" class="subtasks-details">
+                  <summary class="subtasks-summary">
+                    <span style="display:inline-block; margin-left: 4px;">子任务 ({{ getCompletedSubtaskCount(schedule) }}/{{ schedule.subtasks.length }})</span>
+                  </summary>
+                  <div class="card-subtasks">
+                    <label v-for="st in schedule.subtasks" :key="st.id" class="card-subtask-item" :class="{ completed: st.completed }">
+                      <input type="checkbox" :checked="st.completed" @change="toggleSubtask(schedule, st.id)" />
+                      <span>{{ st.title }}</span>
+                    </label>
+                  </div>
+                </details>
+
+                <div class="schedule-meta" style="margin-top: 10px;">
+                  <span class="tag">{{ formatInterval(schedule.startTime, schedule.endTime, schedule.recurrence) }}</span>
+                  <span class="tag" :style="getCategoryStyle(schedule.categoryId)">
+                    {{ getCategoryName(schedule.categoryId) }}
+                  </span>
+                  <span class="tag" :class="getStatusClass(schedule)">{{ getStatusLabel(schedule) }}</span>
+                  <span class="tag important" v-if="schedule.important">重点</span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+        <div v-else class="empty-state" style="flex: 1;">
+          <Icon icon="lucide:calendar-x" class="empty-icon" />
+          <span>暂无日程</span>
         </div>
       </div>
     </div>
 
-    <!-- 日历视图 -->
-    <div v-if="activeView === 'calendar'" class="content-panel active calendar-layout">
-      <section class="calendar-area">
-        <div class="calendar-header">
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <button class="icon-button" @click="changeMonth(-1)" type="button">&lt;</button>
-            <label class="month-picker-label">
-              <h3>{{ calendarYear }} 年 {{ calendarMonth + 1 }} 月</h3>
-            </label>
-            <button class="icon-button" @click="changeMonth(1)" type="button">&gt;</button>
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <button class="plain-button" @click="calendarViewMode = calendarViewMode === 'dots' ? 'names' : 'dots'" type="button">
-              视图: {{ calendarViewMode === 'dots' ? '圆点' : '标题' }}
-            </button>
-            <button class="plain-button" @click="goToToday" type="button">今天</button>
-          </div>
-        </div>
-        <div class="week-row">
-          <span>一</span>
-          <span>二</span>
-          <span>三</span>
-          <span>四</span>
-          <span>五</span>
-          <span>六</span>
-          <span>日</span>
-        </div>
-        <div class="calendar-grid">
-          <div v-for="cell in calendarCells" :key="cell.dateKey" class="calendar-day" 
-               :class="{ muted: !cell.isCurrentMonth, selected: cell.dateKey === selectedDateKey }"
-               @click="selectDate(cell.dateKey)">
-            <div class="day-number">
-              <span>{{ cell.date.getDate() }}</span>
-              <span class="day-count" v-if="cell.allInstances.length > 0">{{ cell.allInstances.length }} 个日程</span>
-            </div>
-            <div class="day-events">
-              <template v-if="calendarViewMode === 'names'">
-                <div v-for="(slot, idx) in cell.slots" :key="idx">
-                  <div v-if="slot" class="day-item" :class="{ important: slot.important }"
-                       :style="{ backgroundColor: getCategoryColor(slot.categoryId) || 'var(--primary)' }"
-                       :title="slot.title">
-                    {{ slot.title }}
-                  </div>
-                  <div v-else style="height: 20px; margin-top: 4px;"></div>
-                </div>
-              </template>
-              <template v-else>
-                <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;">
-                  <span v-for="inst in cell.allInstances" :key="inst.id" 
-                        class="category-dot" 
-                        :style="{ backgroundColor: getCategoryColor(inst.categoryId) || 'var(--primary)', width: '8px', height: '8px', borderRadius: '50%', display: 'inline-block' }"
-                        :title="inst.title">
-                  </span>
-                </div>
-              </template>
-            </div>
-          </div>
-        </div>
-      </section>
-      <aside class="day-detail" style="display: flex; flex-direction: column;">
-        <div class="day-detail-header">
-          <p class="eyebrow">当天内容</p>
-          <h3>{{ selectedDateKey }}</h3>
-        </div>
-        <div class="day-list" style="flex: 1; overflow-y: auto;">
-          <article v-for="schedule in selectedDateSchedules" :key="schedule.id" class="schedule-card">
-            <div class="schedule-title-row" style="align-items: center; gap: 10px;">
-              <input type="checkbox" :checked="schedule.status === 'completed'" @change="toggleScheduleStatus(schedule)" style="width: 20px; height: 20px; cursor: pointer; flex-shrink: 0; margin: 0;" />
-              <h3 :style="{ textDecoration: schedule.status === 'completed' ? 'line-through' : 'none' }" style="flex: 1; word-break: break-all;">
-                {{ schedule.title }}
-              </h3>
-              <div class="card-actions" style="display: flex; gap: 4px;">
-                <button class="action-icon-btn" type="button" @click="openEditDialog(schedule)" aria-label="编辑" title="编辑">
-                  <Icon icon="lucide:edit-3" width="16" height="16" />
-                </button>
-                <button class="action-icon-btn danger" type="button" @click="deleteSchedule(schedule.id)" aria-label="删除" title="删除">
-                  <Icon icon="lucide:trash-2" width="16" height="16" />
-                </button>
-              </div>
-            </div>
-            <p class="schedule-content" v-if="schedule.content">{{ schedule.content }}</p>
-            <div class="schedule-meta" style="margin-top: 10px;">
-              <span class="tag" :style="getCategoryStyle(schedule.categoryId)">
-                {{ getCategoryName(schedule.categoryId) }}
-              </span>
-              <span class="tag" :class="getStatusClass(schedule)">{{ getStatusLabel(schedule) }}</span>
-              <span class="tag important" v-if="schedule.important">重点</span>
-            </div>
-          </article>
-          <div v-if="selectedDateSchedules.length === 0" class="empty-state">今日无日程安排</div>
-        </div>
-      </aside>
-    </div>
-
     <!-- 表单 Dialog -->
     <ScheduleFormDialog ref="scheduleFormDialogRef" :categories="categories" />
+
+    <!-- 自定义删除确认弹窗 -->
+    <Dialog v-model:open="showDeleteConfirm">
+      <DialogContent class="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle style="color: var(--text);">删除确认</DialogTitle>
+          <DialogDescription style="color: var(--muted-foreground);">
+            确认要彻底删除此日程吗？此操作无法撤销。
+          </DialogDescription>
+        </DialogHeader>
+        <div class="flex justify-end gap-2 mt-4">
+          <Button variant="outline" @click="showDeleteConfirm = false">取消</Button>
+          <Button variant="destructive" @click="executeDeleteSchedule">删除</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, ref, computed } from 'vue';
 import { useScheduleStore } from '../stores/scheduleStore';
-import { CalendarEngine, CalendarDaySlot, ScheduleInstance } from '../utils/calendarEngine';
-import { Schedule, Category, Subtask, RecurrenceType, ScheduleStatus } from '../types';
+import { Schedule, Category } from '../types';
 import { Icon } from '@iconify/vue';
 import { platform } from '../utils/platformAdapter';
 import ScheduleFormDialog from '../components/ScheduleFormDialog.vue';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 export default defineComponent({
   name: 'SchedulesView',
   components: {
     Icon,
-    ScheduleFormDialog
+    ScheduleFormDialog,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    Button
   },
   setup() {
     const store = useScheduleStore();
 
     // 基础视图状态
-    const activeView = ref<'list' | 'calendar'>('list');
     const searchQuery = ref('');
-    const listFilter = ref<'today' | 'tomorrow' | 'next7days' | 'all'>('today');
+    const listFilter = ref<'today' | 'tomorrow' | 'next7days' | 'completed' | 'overdue' | 'all'>('today');
     const categoryFilter = ref<string>('all');
+    const activeFilterSection = ref<'time' | 'category'>('time');
 
-    // 日历特有状态
-    const calendarYear = ref(new Date().getFullYear());
-    const calendarMonth = ref(new Date().getMonth());
-    const calendarViewMode = ref<'dots' | 'names'>('names');
-    const selectedDateKey = ref(toDateKey(new Date()));
+    // 删除弹窗状态
+    const showDeleteConfirm = ref(false);
+    const scheduleIdToDelete = ref('');
 
     // 表单子组件 Ref
     const scheduleFormDialogRef = ref<InstanceType<typeof ScheduleFormDialog> | null>(null);
 
     const categories = computed(() => store.categories);
+
+    // 互斥的过滤操作函数
+    const selectListFilter = (filter: 'today' | 'tomorrow' | 'next7days' | 'completed' | 'overdue' | 'all') => {
+      listFilter.value = filter;
+      categoryFilter.value = 'all';
+      activeFilterSection.value = 'time';
+    };
+
+    const selectCategoryFilter = (catId: string) => {
+      categoryFilter.value = catId;
+      listFilter.value = 'all';
+      activeFilterSection.value = 'category';
+    };
 
     // 辅助格式化
     function toDateKey(date: Date): string {
@@ -281,6 +300,11 @@ export default defineComponent({
       let todayCount = 0;
       let tomorrowCount = 0;
       let next7Count = 0;
+      let completedCount = 0;
+      let overdueCount = 0;
+
+      const startOfToday = new Date(now);
+      startOfToday.setHours(0, 0, 0, 0);
 
       store.schedules.forEach(schedule => {
         const startK = toDateKey(new Date(schedule.startTime));
@@ -296,19 +320,28 @@ export default defineComponent({
         if (startK <= endK && scheduleEndK >= todayK) {
           next7Count++;
         }
+        if (schedule.status === 'completed') {
+          completedCount++;
+        } else {
+          if (end < startOfToday) {
+            overdueCount++;
+          }
+        }
       });
 
       return {
         today: todayCount,
         tomorrow: tomorrowCount,
         next7days: next7Count,
+        completed: completedCount,
+        overdue: overdueCount,
         all: store.schedules.length,
         catAll: store.schedules.length
       };
     });
 
     function getCategoryCount(catId: string): number {
-      return store.schedules.filter(s => s.categoryId === catId).length;
+      return store.schedules.filter(s => (s.categoryId || '') === catId).length;
     }
 
     // 分类样式和属性获取
@@ -332,11 +365,13 @@ export default defineComponent({
       if (schedule.status === "completed") return "已完成";
       const endTime = schedule.endTime ? new Date(schedule.endTime) : new Date(schedule.startTime);
       const startTime = new Date(schedule.startTime);
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
       const now = new Date();
-      if (endTime < now) return "已逾期";
+      if (endTime < startOfToday) return "已逾期";
       if (schedule.status === "pending" && startTime <= now) return "进行中";
       if (schedule.status === "in-progress") return "进行中";
-      if (schedule.status === "delayed") return "已延期";
+      if (schedule.status === "delayed") return "已逾期";
       return "未开始";
     }
 
@@ -344,8 +379,10 @@ export default defineComponent({
       if (schedule.status === "completed") return "done";
       const endTime = schedule.endTime ? new Date(schedule.endTime) : new Date(schedule.startTime);
       const startTime = new Date(schedule.startTime);
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
       const now = new Date();
-      if (endTime < now) return "overdue";
+      if (endTime < startOfToday) return "overdue";
       if (schedule.status === "pending" && startTime <= now) return "in-progress";
       return schedule.status; // pending, in-progress, delayed
     }
@@ -387,11 +424,20 @@ export default defineComponent({
           const scheduleEndK = toDateKey(end);
           return startK <= endK && scheduleEndK >= todayK;
         });
+      } else if (listFilter.value === 'completed') {
+        filtered = filtered.filter(s => s.status === 'completed');
+      } else if (listFilter.value === 'overdue') {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        filtered = filtered.filter(s => {
+          const end = s.endTime ? new Date(s.endTime) : new Date(s.startTime);
+          return end < startOfToday && s.status !== 'completed';
+        });
       }
 
       // 2. 分类过滤
       if (categoryFilter.value !== 'all') {
-        filtered = filtered.filter(s => s.categoryId === categoryFilter.value);
+        filtered = filtered.filter(s => (s.categoryId || '') === categoryFilter.value);
       }
 
       // 3. 搜索过滤
@@ -403,46 +449,21 @@ export default defineComponent({
         );
       }
 
-      return [...filtered].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+      return [...filtered].sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
     });
 
-    // 日历格子生成
-    const activeMonthDate = computed(() => new Date(calendarYear.value, calendarMonth.value, 1));
-    const calendarCells = computed<CalendarDaySlot[]>(() => {
-      return CalendarEngine.generateGrid(store.schedules, activeMonthDate.value);
+    const isPendingExpanded = ref(true);
+    const isCompletedExpanded = ref(true);
+
+    const pendingSchedules = computed(() => {
+      const list = visibleSchedules.value.filter(s => s.status !== 'completed');
+      return [...list].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
     });
 
-    // 选中日期的日程实例
-    const selectedDateSchedules = computed(() => {
-      const cell = calendarCells.value.find(c => c.dateKey === selectedDateKey.value);
-      return cell ? cell.allInstances : [];
+    const completedSchedules = computed(() => {
+      const list = visibleSchedules.value.filter(s => s.status === 'completed');
+      return [...list].sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
     });
-
-    // 日历月份操作
-    function changeMonth(offset: number) {
-      let m = calendarMonth.value + offset;
-      let y = calendarYear.value;
-      if (m < 0) {
-        m = 11;
-        y--;
-      } else if (m > 11) {
-        m = 0;
-        y++;
-      }
-      calendarMonth.value = m;
-      calendarYear.value = y;
-    }
-
-    function goToToday() {
-      const now = new Date();
-      calendarYear.value = now.getFullYear();
-      calendarMonth.value = now.getMonth();
-      selectedDateKey.value = toDateKey(now);
-    }
-
-    function selectDate(dateKey: string) {
-      selectedDateKey.value = dateKey;
-    }
 
     // 快捷状态切换
     async function toggleScheduleStatus(schedule: Schedule) {
@@ -473,7 +494,7 @@ export default defineComponent({
 
       await store.updateSchedule(schedule.id, {
         subtasks: updatedSubtasks,
-        status: nextStatus as ScheduleStatus
+        status: nextStatus
       });
     }
 
@@ -491,43 +512,46 @@ export default defineComponent({
       scheduleFormDialogRef.value?.open(schedule.id);
     }
 
-    async function deleteSchedule(id: string) {
-      if (confirm('确认删除此日程？')) {
+    function deleteSchedule(id: string) {
+      scheduleIdToDelete.value = id;
+      showDeleteConfirm.value = true;
+    }
+
+    async function executeDeleteSchedule() {
+      if (scheduleIdToDelete.value) {
         try {
-          await store.deleteSchedule(id);
+          await store.deleteSchedule(scheduleIdToDelete.value);
         } catch (error: any) {
           console.error("Failed to delete schedule:", error);
           await platform.showError("删除日程失败", error.message || String(error));
+        } finally {
+          showDeleteConfirm.value = false;
+          scheduleIdToDelete.value = '';
         }
       }
     }
 
     return {
-      activeView,
       searchQuery,
       listFilter,
       categoryFilter,
+      activeFilterSection,
       categories,
       counts,
       getCategoryCount,
       visibleSchedules,
+      pendingSchedules,
+      completedSchedules,
+      isPendingExpanded,
+      isCompletedExpanded,
       getCategoryName,
       getCategoryColor,
       getCategoryStyle,
       getStatusLabel,
       getStatusClass,
       formatInterval,
-
-      // 日历
-      calendarYear,
-      calendarMonth,
-      calendarViewMode,
-      selectedDateKey,
-      calendarCells,
-      selectedDateSchedules,
-      changeMonth,
-      goToToday,
-      selectDate,
+      selectListFilter,
+      selectCategoryFilter,
 
       // 快捷操作
       toggleScheduleStatus,
@@ -536,10 +560,24 @@ export default defineComponent({
 
       // Dialog
       scheduleFormDialogRef,
+      showDeleteConfirm,
       openAddDialog,
       openEditDialog,
-      deleteSchedule
+      deleteSchedule,
+      executeDeleteSchedule,
     };
   }
 });
 </script>
+
+<style scoped>
+.section-toggle-header {
+  color: var(--muted-foreground);
+}
+.section-toggle-header:hover {
+  color: var(--text) !important;
+}
+.section-toggle-header:hover .divider-line {
+  opacity: 0.95 !important;
+}
+</style>

@@ -1,13 +1,19 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHashHistory } from 'vue-router';
 import SchedulesView from '../views/SchedulesView.vue';
+import CalendarView from '../views/CalendarView.vue';
 import CategoriesView from '../views/CategoriesView.vue';
+import WidgetView from '../views/WidgetView.vue';
+import HistoryView from '../views/HistoryView.vue';
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes: [
     { path: '/', redirect: '/schedules' },
     { path: '/schedules', component: SchedulesView },
-    { path: '/categories', component: CategoriesView }
+    { path: '/calendar', component: CalendarView },
+    { path: '/categories', component: CategoriesView },
+    { path: '/widget', component: WidgetView },
+    { path: '/history', component: HistoryView }
   ]
 });
 

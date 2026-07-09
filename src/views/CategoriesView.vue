@@ -10,33 +10,33 @@
       </button>
     </header>
 
-    <div class="category-list">
+    <div class="category-list" v-if="categories.length > 0">
       <article v-for="category in categories" :key="category.id" class="category-card" style="display: flex; justify-content: space-between; align-items: flex-start;">
         <div>
           <h3 style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; margin: 0 0 6px 0;">
             <span class="color-dot" :style="{ backgroundColor: category.color, width: '12px', height: '12px', borderRadius: '50%', display: 'inline-block' }"></span>
             {{ category.name }}
           </h3>
-          <p style="margin: 0; color: var(--muted); font-size: 13px;">{{ category.note || "无备注" }}</p>
+          <p style="margin: 0; color: var(--muted-foreground); font-size: 13px;">{{ category.note || "无备注" }}</p>
           
           <div class="category-stats" style="display: flex; gap: 16px; margin-top: 10px;">
             <div class="stat-item" style="display: flex; flex-direction: column;">
               <span class="stat-value" style="font-weight: 700; font-size: 14px;">{{ getStats(category.id).total }}</span>
-              <span class="stat-label" style="font-size: 11px; color: var(--muted);">总数</span>
+              <span class="stat-label" style="font-size: 11px; color: var(--muted-foreground);">总数</span>
             </div>
             <div class="stat-item" style="display: flex; flex-direction: column;">
               <span class="stat-value" style="font-weight: 700; font-size: 14px;">{{ getStats(category.id).completed }}</span>
-              <span class="stat-label" style="font-size: 11px; color: var(--muted);">已完成</span>
+              <span class="stat-label" style="font-size: 11px; color: var(--muted-foreground);">已完成</span>
             </div>
             <div class="stat-item" style="display: flex; flex-direction: column;">
               <span class="stat-value" :class="{ danger: getStats(category.id).overdue > 0 }" style="font-weight: 700; font-size: 14px;">
                 {{ getStats(category.id).overdue }}
               </span>
-              <span class="stat-label" style="font-size: 11px; color: var(--muted);">逾期</span>
+              <span class="stat-label" style="font-size: 11px; color: var(--muted-foreground);">逾期</span>
             </div>
             <div class="stat-item" style="display: flex; flex-direction: column;">
               <span class="stat-value" style="font-weight: 700; font-size: 14px;">{{ getStats(category.id).rate }}%</span>
-              <span class="stat-label" style="font-size: 11px; color: var(--muted);">完成率</span>
+              <span class="stat-label" style="font-size: 11px; color: var(--muted-foreground);">完成率</span>
             </div>
           </div>
         </div>
@@ -49,11 +49,30 @@
           </button>
         </div>
       </article>
-      <div v-if="categories.length === 0" class="empty-state">暂无分类</div>
+    </div>
+    <div v-else class="empty-state" style="flex: 1;">
+      <Icon icon="lucide:folder-open" class="empty-icon" />
+      <span>暂无分类</span>
     </div>
 
     <!-- 表单 Dialog -->
     <CategoryFormDialog ref="categoryFormDialogRef" />
+
+    <!-- 自定义删除确认弹窗 -->
+    <Dialog v-model:open="showDeleteConfirm">
+      <DialogContent class="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle style="color: var(--text);">删除确认</DialogTitle>
+          <DialogDescription style="color: var(--muted-foreground);">
+            确认要删除分类吗？属于该分类的日程将变为未分类状态。此操作无法撤销。
+          </DialogDescription>
+        </DialogHeader>
+        <div class="flex justify-end gap-2 mt-4">
+          <Button variant="outline" @click="showDeleteConfirm = false">取消</Button>
+          <Button variant="destructive" @click="executeDeleteCategory">删除</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -64,17 +83,28 @@ import { Category } from '../types';
 import { Icon } from '@iconify/vue';
 import { platform } from '../utils/platformAdapter';
 import CategoryFormDialog from '../components/CategoryFormDialog.vue';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 export default defineComponent({
   name: 'CategoriesView',
   components: {
     Icon,
-    CategoryFormDialog
+    CategoryFormDialog,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    Button
   },
   setup() {
     const store = useScheduleStore();
-    
     const categoryFormDialogRef = ref<InstanceType<typeof CategoryFormDialog> | null>(null);
+
+    // 删除弹窗状态
+    const showDeleteConfirm = ref(false);
+    const categoryIdToDelete = ref('');
 
     const categories = computed(() => store.categories);
 
@@ -109,13 +139,21 @@ export default defineComponent({
       categoryFormDialogRef.value?.open(category.id);
     }
 
-    async function deleteCategory(id: string) {
-      if (confirm('确认删除分类？属于该分类的日程将变为未分类状态。')) {
+    function deleteCategory(id: string) {
+      categoryIdToDelete.value = id;
+      showDeleteConfirm.value = true;
+    }
+
+    async function executeDeleteCategory() {
+      if (categoryIdToDelete.value) {
         try {
-          await store.deleteCategory(id);
+          await store.deleteCategory(categoryIdToDelete.value);
         } catch (error: any) {
           console.error("Failed to delete category:", error);
           await platform.showError("删除分类失败", error.message || String(error));
+        } finally {
+          showDeleteConfirm.value = false;
+          categoryIdToDelete.value = '';
         }
       }
     }
@@ -126,7 +164,9 @@ export default defineComponent({
       categoryFormDialogRef,
       openAddDialog,
       openEditDialog,
-      deleteCategory
+      deleteCategory,
+      executeDeleteCategory,
+      showDeleteConfirm
     };
   }
 });

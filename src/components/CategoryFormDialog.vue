@@ -145,6 +145,7 @@ async function handleSave() {
             maxlength="20"
             required
             :disabled="isSaving"
+            class="text-foreground"
           />
         </div>
 
@@ -196,6 +197,7 @@ async function handleSave() {
             placeholder="请输入备注（选填）"
             maxlength="100"
             :disabled="isSaving"
+            class="text-foreground"
           />
         </div>
 

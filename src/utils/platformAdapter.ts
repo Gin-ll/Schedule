@@ -10,6 +10,17 @@ export class TauriPlatformAdapter implements PlatformAdapter {
     try {
       const { getCurrentWindow } = await import('@tauri-apps/api/window');
       const win = getCurrentWindow();
+      if (win.label !== 'main') {
+        return;
+      }
+      const { PhysicalPosition, PhysicalSize } = await import('@tauri-apps/api/dpi');
+
+      // 1. 设置默认的固定窗口尺寸 (物理像素 1798x1277)
+      await win.setSize(new PhysicalSize(1798, 1277));
+
+      // 2. 设置默认的固定窗口位置 (物理像素 x=401, y=183)
+      await win.setPosition(new PhysicalPosition(401, 183));
+
       await win.show();
     } catch (e) {
       console.error("Tauri initWindow error:", e);

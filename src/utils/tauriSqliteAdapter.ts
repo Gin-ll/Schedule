@@ -27,7 +27,16 @@ export class TauriSqliteAdapter implements RepositoryAdapter {
       [id]
     );
     if (rows && rows.length > 0) {
-      return this.mapRowToEntity(rows[0]);
+      const entity = this.mapRowToEntity(rows[0]);
+      if (this.tableName === 'schedules') {
+        const subtasks = await db.select(`SELECT * FROM subtasks WHERE schedule_id = ?`, [id]);
+        entity.subtasks = subtasks.map((st: any) => ({
+          id: st.id,
+          title: st.title,
+          completed: st.completed === 1
+        }));
+      }
+      return entity;
     }
     return null;
   }
@@ -37,6 +46,28 @@ export class TauriSqliteAdapter implements RepositoryAdapter {
     const rows = await db.select(
       `SELECT * FROM ${this.tableName} WHERE is_deleted = 0`
     );
+    
+    if (this.tableName === 'schedules') {
+      const subtasks = await db.select(`SELECT * FROM subtasks`);
+      const subtaskMap = new Map();
+      for (const st of subtasks) {
+        if (!subtaskMap.has(st.schedule_id)) {
+          subtaskMap.set(st.schedule_id, []);
+        }
+        subtaskMap.get(st.schedule_id).push({
+          id: st.id,
+          title: st.title,
+          completed: st.completed === 1
+        });
+      }
+      
+      return rows.map((r: any) => {
+        const entity = this.mapRowToEntity(r);
+        entity.subtasks = subtaskMap.get(entity.id) || [];
+        return entity;
+      });
+    }
+    
     return rows.map((r: any) => this.mapRowToEntity(r));
   }
 
@@ -69,6 +100,16 @@ export class TauriSqliteAdapter implements RepositoryAdapter {
             entity.revision || 0
           ]
         );
+        
+        await db.execute(`DELETE FROM subtasks WHERE schedule_id = ?`, [entity.id]);
+        if (entity.subtasks && entity.subtasks.length > 0) {
+          for (const st of entity.subtasks) {
+            await db.execute(
+              `INSERT INTO subtasks (id, schedule_id, title, completed) VALUES (?, ?, ?, ?)`,
+              [st.id, entity.id, st.title, st.completed ? 1 : 0]
+            );
+          }
+        }
       } else if (this.tableName === 'categories') {
         const isDeletedVal = entity.isDeleted || 0;
         await db.execute(

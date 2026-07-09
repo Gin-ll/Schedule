@@ -14,7 +14,7 @@ export interface CalendarDaySlot {
   allInstances: ScheduleInstance[];
 }
 
-function toDateKey(date: Date): string {
+export function toDateKey(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }

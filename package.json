@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "package": "tauri build && node scripts/copy-exe.js"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.2",
@@ -23,6 +24,7 @@
   "dependencies": {
     "@iconify/vue": "^5.0.1",
     "@lucide/vue": "^1.23.0",
+    "@tauri-apps/plugin-autostart": "^2.5.1",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-notification": "^2.3.3",
     "@tauri-apps/plugin-shell": "^2.3.5",
@@ -31,6 +33,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "flatpickr": "^4.6.13",
+    "lunar-javascript": "^1.7.7",
     "pinia": "^2.1.0",
     "reka-ui": "^2.10.1",
     "shadcn-vue": "^2.7.4",

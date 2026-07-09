@@ -1,196 +1,163 @@
 <template>
   <Dialog v-model:open="openState">
-    <DialogContent class="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle class="text-xl font-bold">{{ isEditing ? '编辑日程' : '新增日程' }}</DialogTitle>
-        <DialogDescription class="sr-only">日程表单对话框，用于填写或编辑日程详情。</DialogDescription>
-      </DialogHeader>
+    <DialogContent class="sm:max-w-[500px] p-0 overflow-hidden h-[500px]">
+      <div v-if="openState" class="flex flex-col w-full h-[500px] overflow-hidden bg-background">
+        <!-- 固定的头部 -->
+        <DialogHeader class="p-6 pb-3 border-b border-border flex-shrink-0">
+          <DialogTitle class="text-xl font-bold">{{ isEditing ? '编辑日程' : '新增日程' }}</DialogTitle>
+          <DialogDescription class="sr-only">日程表单对话框，用于填写或编辑日程详情。</DialogDescription>
+        </DialogHeader>
 
-      <form class="dialog-form" @submit.prevent="saveSchedule">
-        <div class="grid gap-2">
-          <Label class="text-xs font-semibold text-foreground/70">标题 <span class="text-destructive">*</span></Label>
-          <Input v-model="form.title" type="text" required placeholder="请输入日程标题" maxlength="60" />
-        </div>
-
-        <div class="grid gap-2">
-          <Label class="text-xs font-semibold text-foreground/70">内容</Label>
-          <Textarea v-model="form.content" placeholder="输入日程备注内容" rows="3" maxlength="300" />
-        </div>
-
-        <!-- 子任务容器 -->
-        <div class="dialog-subtasks-container grid gap-2">
-          <Label class="text-xs font-semibold text-foreground/70">子任务</Label>
-          <div class="dialog-subtask-list max-h-[120px] overflow-y-auto border border-input rounded-md p-2 gap-1.5 flex flex-col empty:hidden">
-            <div v-for="(st, index) in form.subtasks" :key="st.id" class="dialog-subtask-row flex items-center justify-between bg-muted/30 px-2 py-1.5 rounded-sm">
-              <span class="text-sm truncate mr-2">{{ st.title }}</span>
-              <Button type="button" variant="ghost" size="xs" class="h-6 text-destructive hover:bg-destructive/10" @click="removeSubtask(index)">删除</Button>
+        <!-- 可滚动的表单体 -->
+        <div class="flex-grow overflow-y-auto px-6 py-4">
+          <form id="schedule-form" class="dialog-form" @submit.prevent="saveSchedule">
+            <div class="grid gap-2">
+              <Label class="text-xs font-semibold" style="color: var(--text);"><span>标题 <span class="text-destructive">*</span></span></Label>
+              <Input v-model="form.title" type="text" required placeholder="请输入日程标题" maxlength="60" style="color: var(--text); font-weight: 500;" />
             </div>
-          </div>
-          <div class="dialog-subtask-input-row flex gap-2">
-            <Input type="text" v-model="newSubtaskTitle" placeholder="输入子任务内容" maxlength="60" class="flex-1" />
-            <Button type="button" variant="secondary" @click="addSubtask">添加</Button>
-          </div>
-        </div>
 
-        <div class="form-grid">
-          <div class="flex flex-col gap-1.5">
-            <span class="text-xs font-semibold text-foreground/70">开始时间 *</span>
-            <Popover>
-              <PopoverTrigger as-child>
-                <Button variant="outline" class="w-full justify-start text-left font-normal h-9">
-                  <Icon icon="lucide:calendar" class="mr-2 h-4 w-4 text-foreground/60" />
-                  {{ formatDateTime(startCalendarDate, startHour, startMinute) }}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent class="w-auto p-0" align="start">
-                <Calendar v-model="startCalendarDate" class="rounded-t-md" />
-                <div class="flex items-center justify-between border-t border-border p-3 gap-3 bg-muted/10">
-                  <span class="text-xs font-semibold text-muted-foreground">具体时间</span>
-                  <div class="flex items-center gap-1.5">
-                    <Select v-model="startHour">
-                      <SelectTrigger class="w-[60px] h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem v-for="h in hoursList" :key="h" :value="h">{{ h }}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span class="text-xs">:</span>
-                    <Select v-model="startMinute">
-                      <SelectTrigger class="w-[60px] h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem v-for="m in minutesList" :key="m" :value="m">{{ m }}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-foreground/70">结束时间</span>
-              <button type="button" @click="hasEndTime = !hasEndTime" class="text-[10px] text-primary underline cursor-pointer select-none">
-                {{ hasEndTime ? '清除结束时间' : '设定结束时间' }}
-              </button>
+            <div class="grid gap-2">
+              <Label class="text-xs font-semibold" style="color: var(--text);">内容</Label>
+              <Textarea v-model="form.content" placeholder="输入日程备注内容" rows="3" maxlength="300" style="color: var(--text); font-weight: 500; min-height: 80px;" />
             </div>
-            <Popover v-if="hasEndTime">
-              <PopoverTrigger as-child>
-                <Button variant="outline" class="w-full justify-start text-left font-normal h-9">
-                  <Icon icon="lucide:calendar" class="mr-2 h-4 w-4 text-foreground/60" />
-                  {{ formatDateTime(endCalendarDate, endHour, endMinute) }}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent class="w-auto p-0" align="start">
-                <Calendar v-model="endCalendarDate" class="rounded-t-md" />
-                <div class="flex items-center justify-between border-t border-border p-3 gap-3 bg-muted/10">
-                  <span class="text-xs font-semibold text-muted-foreground">具体时间</span>
-                  <div class="flex items-center gap-1.5">
-                    <Select v-model="endHour">
-                      <SelectTrigger class="w-[60px] h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem v-for="h in hoursList" :key="h" :value="h">{{ h }}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span class="text-xs">:</span>
-                    <Select v-model="endMinute">
-                      <SelectTrigger class="w-[60px] h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem v-for="m in minutesList" :key="m" :value="m">{{ m }}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+
+            <!-- 子任务容器 -->
+            <div class="dialog-subtasks-container grid gap-2">
+              <Label class="text-xs font-semibold" style="color: var(--text);">子任务</Label>
+              <div v-if="form.subtasks && form.subtasks.length > 0" class="dialog-subtask-list border border-input rounded-md p-2 gap-1.5 flex flex-col">
+                <div v-for="(st, index) in form.subtasks" :key="st.id" class="dialog-subtask-row flex items-center justify-between bg-muted/30 px-2 py-1.5 rounded-sm">
+                  <span class="text-sm truncate mr-2" style="color: var(--text); font-weight: 600;">{{ st.title }}</span>
+                  <Button type="button" variant="ghost" size="xs" class="h-6 text-destructive hover:bg-destructive/10" @click="removeSubtask(index)">删除</Button>
                 </div>
-              </PopoverContent>
-            </Popover>
-            <Button v-else variant="ghost" disabled class="w-full justify-start text-left text-muted-foreground/60 h-9 font-normal border border-dashed border-input">
-              无结束时间
-            </Button>
-          </div>
+              </div>
+              <div class="dialog-subtask-input-row flex gap-2">
+                <Input type="text" v-model="newSubtaskTitle" placeholder="输入子任务内容" maxlength="60" class="flex-1" style="color: var(--text); font-weight: 500;" />
+                <Button type="button" variant="secondary" @click="addSubtask">添加</Button>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="flex flex-col gap-1.5">
+                <span class="text-xs font-semibold text-foreground/90">开始时间 <span class="text-destructive">*</span></span>
+                <Popover>
+                  <PopoverTrigger as-child>
+                    <Button variant="outline" class="w-full justify-start text-left font-normal h-9">
+                      <Icon icon="lucide:calendar" class="mr-2 h-4 w-4 text-foreground/60" />
+                      {{ formatDateTime(startCalendarDate, startHour, startMinute) }}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent class="w-auto p-0" align="start">
+                    <Calendar v-model="startCalendarDate" class="rounded-t-md" />
+                    <div class="flex items-center justify-between border-t border-border p-3 gap-3 bg-muted/10">
+                      <span class="text-xs font-semibold text-muted-foreground">具体时间</span>
+                      <div class="flex items-center gap-1.5">
+                        <select v-model="startHour" class="w-[64px] h-8 border border-input rounded bg-popover px-1 text-xs outline-none text-foreground font-semibold" style="color: var(--text); background: var(--background);">
+                          <option v-for="h in hoursList" :key="h" :value="h">{{ h }}</option>
+                        </select>
+                        <span class="text-xs">:</span>
+                        <select v-model="startMinute" class="w-[64px] h-8 border border-input rounded bg-popover px-1 text-xs outline-none text-foreground font-semibold" style="color: var(--text); background: var(--background);">
+                          <option v-for="m in minutesList" :key="m" :value="m">{{ m }}</option>
+                        </select>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-foreground/90">结束时间</span>
+                  <button type="button" @click="hasEndTime = !hasEndTime" class="text-[10px] text-primary underline cursor-pointer select-none">
+                    {{ hasEndTime ? '清除结束时间' : '设定结束时间' }}
+                  </button>
+                </div>
+                <Popover v-if="hasEndTime">
+                  <PopoverTrigger as-child>
+                    <Button variant="outline" class="w-full justify-start text-left font-normal h-9">
+                      <Icon icon="lucide:calendar" class="mr-2 h-4 w-4 text-foreground/60" />
+                      {{ formatDateTime(endCalendarDate, endHour, endMinute) }}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent class="w-auto p-0" align="start">
+                    <Calendar v-model="endCalendarDate" class="rounded-t-md" />
+                    <div class="flex items-center justify-between border-t border-border p-3 gap-3 bg-muted/10">
+                      <span class="text-xs font-semibold text-muted-foreground">具体时间</span>
+                      <div class="flex items-center gap-1.5">
+                        <select v-model="endHour" class="w-[64px] h-8 border border-input rounded bg-popover px-1 text-xs outline-none text-foreground font-semibold" style="color: var(--text); background: var(--background);">
+                          <option v-for="h in hoursList" :key="h" :value="h">{{ h }}</option>
+                        </select>
+                        <span class="text-xs">:</span>
+                        <select v-model="endMinute" class="w-[64px] h-8 border border-input rounded bg-popover px-1 text-xs outline-none text-foreground font-semibold" style="color: var(--text); background: var(--background);">
+                          <option v-for="m in minutesList" :key="m" :value="m">{{ m }}</option>
+                        </select>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <Button v-else variant="ghost" disabled class="w-full justify-start text-left text-muted-foreground/60 h-9 font-normal border border-dashed border-input">
+                  无结束时间
+                </Button>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="flex flex-col gap-1.5">
+                <span class="text-xs font-semibold text-foreground/90">分类</span>
+                <select v-model="form.categoryId" class="w-full h-9 border border-input rounded-lg bg-popover px-2.5 py-1 text-sm outline-none text-foreground font-medium" style="color: var(--text); background: var(--background);">
+                  <option value="__none">未分类</option>
+                  <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                    {{ cat.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <span class="text-xs font-semibold text-foreground/90">循环规则</span>
+                <select v-model="form.recurrence" class="w-full h-9 border border-input rounded-lg bg-popover px-2.5 py-1 text-sm outline-none text-foreground font-medium" style="color: var(--text); background: var(--background);">
+                  <option value="none">不循环</option>
+                  <option value="daily">每天</option>
+                  <option value="weekly">每周</option>
+                  <option value="monthly">每月</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="flex flex-col gap-1.5">
+                <span class="text-xs font-semibold text-foreground/90">状态</span>
+                <select v-model="form.status" class="w-full h-9 border border-input rounded-lg bg-popover px-2.5 py-1 text-sm outline-none text-foreground font-medium" style="color: var(--text); background: var(--background);">
+                  <option value="pending">未开始</option>
+                  <option value="in-progress">进行中</option>
+                  <option value="completed">已完成</option>
+                  <option value="delayed">已逾期</option>
+                </select>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <span class="text-xs font-semibold text-foreground/90">提醒</span>
+                <select v-model="form.reminder" class="w-full h-9 border border-input rounded-lg bg-popover px-2.5 py-1 text-sm outline-none text-foreground font-medium" style="color: var(--text); background: var(--background);">
+                  <option value="none">无</option>
+                  <option value="10m">提前 10 分钟</option>
+                  <option value="30m">提前 30 分钟</option>
+                  <option value="1h">提前 1 小时</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="check-row flex items-center gap-2 mt-2">
+              <Checkbox id="formImportant" v-model:checked="form.important" />
+              <Label for="formImportant" class="text-xs font-normal cursor-pointer select-none text-foreground/90">标记为重点日程</Label>
+            </div>
+          </form>
         </div>
 
-        <div class="form-grid">
-          <div class="flex flex-col gap-1.5">
-            <span class="text-xs font-semibold text-foreground/70">分类</span>
-            <Select v-model="form.categoryId">
-              <SelectTrigger style="width: 100%;">
-                <SelectValue placeholder="选择分类" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none">未分类</SelectItem>
-                <SelectItem v-for="cat in categories" :key="cat.id" :value="cat.id">
-                  {{ cat.name }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <span class="text-xs font-semibold text-foreground/70">循环规则</span>
-            <Select v-model="form.recurrence">
-              <SelectTrigger style="width: 100%;">
-                <SelectValue placeholder="选择循环规则" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">不循环</SelectItem>
-                <SelectItem value="daily">每天</SelectItem>
-                <SelectItem value="weekly">每周</SelectItem>
-                <SelectItem value="monthly">每月</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div class="form-grid">
-          <div class="flex flex-col gap-1.5">
-            <span class="text-xs font-semibold text-foreground/70">状态</span>
-            <Select v-model="form.status">
-              <SelectTrigger style="width: 100%;">
-                <SelectValue placeholder="选择状态" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">未开始</SelectItem>
-                <SelectItem value="in-progress">进行中</SelectItem>
-                <SelectItem value="completed">已完成</SelectItem>
-                <SelectItem value="delayed">已延期</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <span class="text-xs font-semibold text-foreground/70">提醒</span>
-            <Select v-model="form.reminder">
-              <SelectTrigger style="width: 100%;">
-                <SelectValue placeholder="选择提醒" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">无</SelectItem>
-                <SelectItem value="10m">提前 10 分钟</SelectItem>
-                <SelectItem value="30m">提前 30 分钟</SelectItem>
-                <SelectItem value="1h">提前 1 小时</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div class="check-row flex items-center gap-2 mt-2">
-          <Checkbox id="formImportant" v-model:checked="form.important" />
-          <Label for="formImportant" class="text-xs font-normal cursor-pointer select-none text-foreground/80">标记为重点日程</Label>
-        </div>
-
-        <footer class="flex justify-end gap-2 mt-6 border-t border-border pt-4">
+        <!-- 固定的底部 -->
+        <footer class="flex justify-end gap-2 p-6 pt-4 border-t border-border bg-background flex-shrink-0">
           <Button type="button" variant="outline" @click="openState = false">
             取消
           </Button>
-          <Button type="submit" :disabled="isSaving">
+          <Button type="submit" form="schedule-form" :disabled="isSaving">
             {{ isSaving ? '保存中...' : '保存' }}
           </Button>
         </footer>
-      </form>
+      </div>
     </DialogContent>
   </Dialog>
 </template>
@@ -360,13 +327,13 @@ function setupNewSchedule() {
   endCalendarDate.value = new CalendarDate(end.getFullYear(), end.getMonth() + 1, end.getDate());
   endHour.value = String(end.getHours()).padStart(2, '0');
   endMinute.value = '00';
-  hasEndTime.value = true;
+  hasEndTime.value = false;
   
   form.value = {
     title: '',
     content: '',
     startTime: now.toISOString(),
-    endTime: end.toISOString(),
+    endTime: '',
     recurrence: 'none',
     categoryId: '__none',
     status: 'pending',

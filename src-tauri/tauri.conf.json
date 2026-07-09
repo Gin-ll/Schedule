@@ -17,6 +17,19 @@
         "height": 600,
         "resizable": true,
         "fullscreen": false
+      },
+      {
+        "label": "widget",
+        "title": "Desktop Widget",
+        "url": "/widget",
+        "width": 320,
+        "height": 780,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": false,
+        "visible": false,
+        "resizable": true,
+        "skipTaskbar": true
       }
     ],
     "security": {
@@ -25,7 +38,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
