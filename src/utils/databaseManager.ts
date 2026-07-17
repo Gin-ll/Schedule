@@ -47,6 +47,7 @@ const dbPromise = (async () => {
 
 export const scheduleRepo = new DomainRepository('schedules', dbPromise as any);
 export const categoryRepo = new DomainRepository('categories', dbPromise as any);
+export const matterRepo = new DomainRepository('matters', dbPromise as any);
 
 // 保留旧 DatabaseManager / dbManager 以防编译冲突，兼容测试
 export class DatabaseManager {

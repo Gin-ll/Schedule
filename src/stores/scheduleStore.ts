@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
-import { Schedule, Category } from '../types';
-import { scheduleRepo, categoryRepo } from '../utils/databaseManager';
+import { Schedule, Category, Matter } from '../types';
+import { scheduleRepo, categoryRepo, matterRepo } from '../utils/databaseManager';
 import { SyncManager, SyncRemoteAdapter } from '../utils/syncService';
 
 async function triggerSync() {
@@ -16,6 +16,7 @@ export const useScheduleStore = defineStore('schedule', {
   state: () => ({
     schedules: [] as Schedule[],
     categories: [] as Category[],
+    matters: [] as Matter[],
     loading: false
   }),
   actions: {
@@ -25,11 +26,15 @@ export const useScheduleStore = defineStore('schedule', {
         const list = await scheduleRepo.getAll();
         this.schedules = list.map((s: any) => ({
           ...s,
-          important: s.important === 1 || s.important === true
+          important: s.important === 1 || s.important === true,
+          matterId: s.matterId || ''
         }));
 
         const cats = await categoryRepo.getAll();
         this.categories = cats;
+
+        const matts = await matterRepo.getAll();
+        this.matters = matts;
       } catch (e) {
         console.error("Failed to load store:", e);
       } finally {
@@ -104,6 +109,94 @@ export const useScheduleStore = defineStore('schedule', {
         await categoryRepo.save(id, updatedItem);
         await triggerSync();
       }
+    },
+    async addMatter(payload: Omit<Matter, 'id' | 'createdAt' | 'status'>) {
+      const id = `mat-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
+      const now = new Date().toISOString();
+      const matter: Matter = { ...payload, id, status: 'active', createdAt: now };
+      this.matters.push(matter);
+      await matterRepo.save(id, matter);
+      await triggerSync();
+      return matter;
+    },
+    async updateMatter(id: string, payload: Partial<Matter>) {
+      let changed = false;
+      let updatedItem: Matter | null = null;
+      this.matters = this.matters.map(m => {
+        if (m.id === id) {
+          updatedItem = { ...m, ...payload };
+          changed = true;
+          return updatedItem;
+        }
+        return m;
+      });
+      if (changed && updatedItem) {
+        await matterRepo.save(id, updatedItem);
+        await triggerSync();
+      }
+    },
+    async deleteMatter(id: string) {
+      const savePromises: Promise<void>[] = [];
+      this.schedules = this.schedules.map(s => {
+        if (s.matterId === id) {
+          const updated = { ...s, matterId: '' };
+          savePromises.push(scheduleRepo.save(s.id, updated));
+          return updated;
+        }
+        return s;
+      });
+      this.matters = this.matters.filter(m => m.id !== id);
+      await Promise.all(savePromises);
+      await matterRepo.delete(id);
+      await triggerSync();
+    },
+    async completeMatter(id: string) {
+      const now = new Date().toISOString();
+      let changed = false;
+      let updatedItem: Matter | null = null;
+      this.matters = this.matters.map(m => {
+        if (m.id === id) {
+          updatedItem = { ...m, status: 'completed', completedAt: now };
+          changed = true;
+          return updatedItem;
+        }
+        return m;
+      });
+      if (changed && updatedItem) {
+        await matterRepo.save(id, updatedItem);
+        await triggerSync();
+      }
+    },
+    async restoreMatter(id: string) {
+      let changed = false;
+      let updatedItem: Matter | null = null;
+      this.matters = this.matters.map(m => {
+        if (m.id === id) {
+          updatedItem = { ...m, status: 'active', completedAt: undefined };
+          changed = true;
+          return updatedItem;
+        }
+        return m;
+      });
+      if (changed && updatedItem) {
+        // 在本地数据库保存时，需要把 completedAt 抹掉。SQLite 底层已做 NULL 处理
+        await matterRepo.save(id, updatedItem);
+        await triggerSync();
+      }
+    },
+    async completeSchedulesByMatter(matterId: string) {
+      const now = new Date().toISOString();
+      const savePromises: Promise<void>[] = [];
+      this.schedules = this.schedules.map(s => {
+        if (s.matterId === matterId && s.status !== 'completed') {
+          const updated = { ...s, status: 'completed' as const, updatedAt: now, isNotified: false };
+          savePromises.push(scheduleRepo.save(s.id, updated));
+          return updated;
+        }
+        return s;
+      });
+      await Promise.all(savePromises);
+      await triggerSync();
     },
     async syncWithRemote(remoteAdapter: SyncRemoteAdapter) {
       this.loading = true;

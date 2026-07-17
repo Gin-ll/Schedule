@@ -26,6 +26,13 @@
           </button>
         </router-link>
 
+        <!-- 路由到 matters 视图 -->
+        <router-link to="/matters" custom v-slot="{ navigate, isActive }">
+          <button class="nav-item" :class="{ active: isActive }" @click="navigate" type="button" title="事项管理">
+            <Icon icon="lucide:briefcase" width="24" height="24" />
+          </button>
+        </router-link>
+
         <!-- 路由到 history 视图 -->
         <router-link to="/history" custom v-slot="{ navigate, isActive }">
           <button class="nav-item" :class="{ active: isActive }" @click="navigate" type="button" title="历史回顾">

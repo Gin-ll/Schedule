@@ -51,6 +51,26 @@ pub fn run() {
       ",
             kind: tauri_plugin_sql::MigrationKind::Up,
         },
+        tauri_plugin_sql::Migration {
+            version: 3,
+            description: "create_matters_table",
+            sql: "
+        CREATE TABLE IF NOT EXISTS matters (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          icon TEXT,
+          color TEXT NOT NULL,
+          description TEXT,
+          created_at TEXT NOT NULL,
+          completed_at TEXT,
+          status TEXT NOT NULL DEFAULT 'active',
+          is_deleted INTEGER DEFAULT 0,
+          revision INTEGER DEFAULT 0
+        );
+        ALTER TABLE schedules ADD COLUMN matter_id TEXT;
+      ",
+            kind: tauri_plugin_sql::MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

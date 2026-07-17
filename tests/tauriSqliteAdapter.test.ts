@@ -24,12 +24,12 @@ describe('TauriSqliteAdapter', () => {
     };
 
     const adapter = new TauriSqliteAdapter(
-      "schedules",
+      "categories",
       Promise.resolve(mockDbConnection as any)
     );
 
-    const p1 = adapter.save('k1', { id: 'k1', val: 'a' });
-    const p2 = adapter.save('k2', { id: 'k2', val: 'b' });
+    const p1 = adapter.save('k1', { id: 'k1', name: 'cat A', color: '#ff0000' });
+    const p2 = adapter.save('k2', { id: 'k2', name: 'cat B', color: '#00ff00' });
 
     await Promise.all([p1, p2]);
 
@@ -39,8 +39,8 @@ describe('TauriSqliteAdapter', () => {
     // 检查具体的执行顺序，验证 PRAGMA 仅在初始化时执行了一次，随后串行执行 INSERT
     expect(executionOrder[0]).toContain('PRAGMA journal_mode=WAL');
     expect(executionOrder[2]).toContain('PRAGMA busy_timeout=5000');
-    expect(executionOrder[4]).toContain('INSERT INTO schedules');
-    expect(executionOrder[6]).toContain('INSERT INTO schedules');
+    expect(executionOrder[4]).toContain('INSERT INTO categories');
+    expect(executionOrder[6]).toContain('INSERT INTO categories');
   });
 
   it('should perform get, getAll and delete operations correctly', async () => {
@@ -82,6 +82,9 @@ describe('TauriSqliteAdapter', () => {
     const mockDbConnection = {
       execute: vi.fn().mockResolvedValue([1]),
       select: vi.fn().mockImplementation((sql: string, params?: any[]) => {
+        if (sql.toLowerCase().includes('subtasks')) {
+          return Promise.resolve([]);
+        }
         if (sql.includes('WHERE id = ?')) {
           const id = params?.[0];
           const found = mockData.find(item => item.id === id);
@@ -111,7 +114,9 @@ describe('TauriSqliteAdapter', () => {
       createdAt: '2026-07-07T12:00:00Z',
       updatedAt: '2026-07-07T12:00:00Z',
       isDeleted: 0,
-      revision: 1
+      revision: 1,
+      subtasks: [],
+      matterId: ''
     });
 
     const nonExistent = await adapter.get('k3');
@@ -133,7 +138,9 @@ describe('TauriSqliteAdapter', () => {
         createdAt: '2026-07-07T12:00:00Z',
         updatedAt: '2026-07-07T12:00:00Z',
         isDeleted: 0,
-        revision: 1
+        revision: 1,
+        subtasks: [],
+        matterId: ''
       },
       {
         id: 'k2',
@@ -149,7 +156,9 @@ describe('TauriSqliteAdapter', () => {
         createdAt: '2026-07-07T13:00:00Z',
         updatedAt: '2026-07-07T13:00:00Z',
         isDeleted: 0,
-        revision: 1
+        revision: 1,
+        subtasks: [],
+        matterId: ''
       }
     ]);
 

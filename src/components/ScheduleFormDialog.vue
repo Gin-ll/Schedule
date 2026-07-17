@@ -110,6 +110,51 @@
                 </select>
               </div>
               <div class="flex flex-col gap-1.5">
+                <span class="text-xs font-semibold text-foreground/90">所属事项</span>
+                <select v-model="form.matterId" @change="onMatterSelectChange" class="w-full h-9 border border-input rounded-lg bg-popover px-2.5 py-1 text-sm outline-none text-foreground font-medium" style="color: var(--text); background: var(--background);">
+                  <option value="">无事项</option>
+                  <option v-for="mat in activeMatters" :key="mat.id" :value="mat.id">
+                    {{ mat.icon ? mat.icon + ' ' : '' }}{{ mat.name }}
+                  </option>
+                  <option value="__create_new_matter">➕ 新建事项...</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 快速创建事项内联表单 -->
+            <div v-if="showQuickCreateMatter" class="p-3 border border-border rounded-lg bg-muted/20 flex flex-col gap-2.5 my-2">
+              <span class="text-xs font-bold text-foreground">快速新建事项</span>
+              <div class="flex gap-2 items-center">
+                <Input v-model="newMatterName" placeholder="输入事项名称..." class="flex-1 h-8 text-xs font-semibold" style="color: var(--text);" />
+                
+                <!-- 预设颜色选择器 -->
+                <select v-model="newMatterColor" class="h-8 border border-input rounded text-xs px-1.5 bg-background font-semibold" style="color: var(--text);">
+                  <option value="#3b82f6">蓝色</option>
+                  <option value="#10b981">绿色</option>
+                  <option value="#f59e0b">黄色</option>
+                  <option value="#ef4444">红色</option>
+                  <option value="#8b5cf6">紫色</option>
+                  <option value="#ec4899">粉色</option>
+                </select>
+                
+                <!-- 预设图标选择器 -->
+                <select v-model="newMatterIcon" class="h-8 border border-input rounded text-xs px-1.5 bg-background font-semibold" style="color: var(--text);">
+                  <option value="📌">📌 钉子</option>
+                  <option value="🏠">🏠 房子</option>
+                  <option value="✈">✈ 飞机</option>
+                  <option value="📖">📖 书本</option>
+                  <option value="💪">💪 健身</option>
+                  <option value="💼">💼 工作</option>
+                </select>
+              </div>
+              <div class="flex justify-end gap-2">
+                <Button type="button" variant="ghost" size="xs" @click="cancelQuickCreateMatter">取消</Button>
+                <Button type="button" variant="secondary" size="xs" @click="saveQuickCreateMatter">创建</Button>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="flex flex-col gap-1.5">
                 <span class="text-xs font-semibold text-foreground/90">循环规则</span>
                 <select v-model="form.recurrence" class="w-full h-9 border border-input rounded-lg bg-popover px-2.5 py-1 text-sm outline-none text-foreground font-medium" style="color: var(--text); background: var(--background);">
                   <option value="none">不循环</option>
@@ -118,9 +163,6 @@
                   <option value="monthly">每月</option>
                 </select>
               </div>
-            </div>
-
-            <div class="form-grid">
               <div class="flex flex-col gap-1.5">
                 <span class="text-xs font-semibold text-foreground/90">状态</span>
                 <select v-model="form.status" class="w-full h-9 border border-input rounded-lg bg-popover px-2.5 py-1 text-sm outline-none text-foreground font-medium" style="color: var(--text); background: var(--background);">
@@ -130,6 +172,9 @@
                   <option value="delayed">已逾期</option>
                 </select>
               </div>
+            </div>
+
+            <div class="form-grid">
               <div class="flex flex-col gap-1.5">
                 <span class="text-xs font-semibold text-foreground/90">提醒</span>
                 <select v-model="form.reminder" class="w-full h-9 border border-input rounded-lg bg-popover px-2.5 py-1 text-sm outline-none text-foreground font-medium" style="color: var(--text); background: var(--background);">
@@ -138,6 +183,9 @@
                   <option value="30m">提前 30 分钟</option>
                   <option value="1h">提前 1 小时</option>
                 </select>
+              </div>
+              <div class="flex flex-col gap-1.5 opacity-0 pointer-events-none select-none">
+                <!-- 占位，保持排版对称 -->
               </div>
             </div>
 
@@ -187,7 +235,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarDate } from '@internationalized/date';
 import { Icon } from '@iconify/vue';
 
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useScheduleStore } from '../stores/scheduleStore';
 import { platform } from '../utils/platformAdapter';
 import type { Category, Subtask, RecurrenceType, ScheduleStatus } from '../types';
@@ -238,8 +286,53 @@ const form = ref({
   status: 'pending' as ScheduleStatus,
   reminder: 'none' as 'none' | '10m' | '30m' | '1h',
   important: false,
-  subtasks: [] as Subtask[]
+  subtasks: [] as Subtask[],
+  matterId: ''
 });
+
+const activeMatters = computed(() => store.matters.filter(m => m.status === 'active'));
+
+// 快速创建事项状态
+const showQuickCreateMatter = ref(false);
+const newMatterName = ref('');
+const newMatterColor = ref('#3b82f6');
+const newMatterIcon = ref('📌');
+
+function onMatterSelectChange(event: Event) {
+  const select = event.target as HTMLSelectElement;
+  if (select.value === '__create_new_matter') {
+    showQuickCreateMatter.value = true;
+  } else {
+    showQuickCreateMatter.value = false;
+  }
+}
+
+async function saveQuickCreateMatter() {
+  const name = newMatterName.value.trim();
+  if (!name) return;
+  try {
+    const created = await store.addMatter({
+      name,
+      color: newMatterColor.value,
+      icon: newMatterIcon.value
+    });
+    form.value.matterId = created.id;
+    cancelQuickCreateMatter();
+  } catch (e: any) {
+    console.error(e);
+    await platform.showError("创建事项失败", e.message || String(e));
+  }
+}
+
+function cancelQuickCreateMatter() {
+  showQuickCreateMatter.value = false;
+  newMatterName.value = '';
+  newMatterColor.value = '#3b82f6';
+  newMatterIcon.value = '📌';
+  if (form.value.matterId === '__create_new_matter') {
+    form.value.matterId = '';
+  }
+}
 
 function resetForm() {
   form.value = {
@@ -252,12 +345,14 @@ function resetForm() {
     status: 'pending',
     reminder: 'none',
     important: false,
-    subtasks: []
+    subtasks: [],
+    matterId: ''
   };
   newSubtaskTitle.value = '';
   isEditing.value = false;
   editingId.value = null;
   isSaving.value = false;
+  cancelQuickCreateMatter();
 }
 
 // 监听 openState：在 Dialog 被动关闭时触发 resetForm
@@ -308,12 +403,20 @@ async function open(scheduleId?: string) {
       status: copiedItem.status || 'pending',
       reminder: copiedItem.reminder || 'none',
       important: copiedItem.important === 1 || copiedItem.important === true,
-      subtasks: copiedItem.subtasks || []
+      subtasks: copiedItem.subtasks || [],
+      matterId: copiedItem.matterId || ''
     };
   } else {
     openState.value = true;
     setupNewSchedule();
   }
+}
+
+// 供外部传入初始 matterId
+async function openWithMatter(matterId: string) {
+  openState.value = true;
+  setupNewSchedule();
+  form.value.matterId = matterId;
 }
 
 function setupNewSchedule() {
@@ -339,7 +442,8 @@ function setupNewSchedule() {
     status: 'pending',
     reminder: 'none',
     important: false,
-    subtasks: []
+    subtasks: [],
+    matterId: ''
   };
 }
 
@@ -410,7 +514,8 @@ async function saveSchedule() {
       status: form.value.status,
       reminder: form.value.reminder,
       important: form.value.important,
-      subtasks: filteredSubtasks
+      subtasks: filteredSubtasks,
+      matterId: form.value.matterId === '__create_new_matter' ? '' : form.value.matterId
     };
 
     if (isEditing.value && editingId.value) {
@@ -429,6 +534,7 @@ async function saveSchedule() {
 }
 
 defineExpose({
-  open
+  open,
+  openWithMatter
 });
 </script>

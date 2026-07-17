@@ -34,4 +34,18 @@ export interface Schedule {
   subtasks?: Subtask[];
   isDeleted?: number;
   revision?: number;
+  matterId?: string;      // 外键，关联 Matter.id，无项目时为空或未定义
+}
+
+export interface Matter {
+  id: string;
+  name: string;
+  icon?: string;          // 图标名称，如 lucide 图标
+  color: string;          // 十六进制颜色代码
+  description?: string;
+  createdAt: string;
+  completedAt?: string;   // 完成时间
+  status: 'active' | 'completed';
+  isDeleted?: number;
+  revision?: number;
 }

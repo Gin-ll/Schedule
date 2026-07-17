@@ -77,12 +77,12 @@ export class TauriSqliteAdapter implements RepositoryAdapter {
       if (this.tableName === 'schedules') {
         const isDeletedVal = entity.isDeleted || 0;
         await db.execute(
-          `INSERT INTO schedules (id, title, content, start_time, end_time, recurrence, category_id, status, reminder, important, created_at, updated_at, is_deleted, revision) ` +
-          `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ` +
+          `INSERT INTO schedules (id, title, content, start_time, end_time, recurrence, category_id, status, reminder, important, created_at, updated_at, is_deleted, revision, matter_id) ` +
+          `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ` +
           `ON CONFLICT(id) DO UPDATE SET ` +
           `title=excluded.title, content=excluded.content, start_time=excluded.start_time, end_time=excluded.end_time, ` +
           `recurrence=excluded.recurrence, category_id=excluded.category_id, status=excluded.status, reminder=excluded.reminder, ` +
-          `important=excluded.important, updated_at=excluded.updated_at, is_deleted=excluded.is_deleted, revision=excluded.revision`,
+          `important=excluded.important, updated_at=excluded.updated_at, is_deleted=excluded.is_deleted, revision=excluded.revision, matter_id=excluded.matter_id`,
           [
             entity.id,
             entity.title,
@@ -97,7 +97,8 @@ export class TauriSqliteAdapter implements RepositoryAdapter {
             entity.createdAt,
             entity.updatedAt,
             isDeletedVal,
-            entity.revision || 0
+            entity.revision || 0,
+            entity.matterId || null
           ]
         );
         
@@ -122,6 +123,27 @@ export class TauriSqliteAdapter implements RepositoryAdapter {
             entity.name,
             entity.color,
             entity.note || null,
+            isDeletedVal,
+            entity.revision || 0
+          ]
+        );
+      } else if (this.tableName === 'matters') {
+        const isDeletedVal = entity.isDeleted || 0;
+        await db.execute(
+          `INSERT INTO matters (id, name, icon, color, description, created_at, completed_at, status, is_deleted, revision) ` +
+          `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ` +
+          `ON CONFLICT(id) DO UPDATE SET ` +
+          `name=excluded.name, icon=excluded.icon, color=excluded.color, description=excluded.description, ` +
+          `completed_at=excluded.completed_at, status=excluded.status, is_deleted=excluded.is_deleted, revision=excluded.revision`,
+          [
+            entity.id,
+            entity.name,
+            entity.icon || null,
+            entity.color,
+            entity.description || null,
+            entity.createdAt,
+            entity.completedAt || null,
+            entity.status,
             isDeletedVal,
             entity.revision || 0
           ]
@@ -160,7 +182,8 @@ export class TauriSqliteAdapter implements RepositoryAdapter {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         isDeleted: row.is_deleted,
-        revision: row.revision
+        revision: row.revision,
+        matterId: row.matter_id || ''
       };
     } else if (this.tableName === 'categories') {
       return {
@@ -168,6 +191,19 @@ export class TauriSqliteAdapter implements RepositoryAdapter {
         name: row.name,
         color: row.color,
         note: row.note || undefined,
+        isDeleted: row.is_deleted,
+        revision: row.revision
+      };
+    } else if (this.tableName === 'matters') {
+      return {
+        id: row.id,
+        name: row.name,
+        icon: row.icon || undefined,
+        color: row.color,
+        description: row.description || undefined,
+        createdAt: row.created_at,
+        completedAt: row.completed_at || undefined,
+        status: row.status,
         isDeleted: row.is_deleted,
         revision: row.revision
       };

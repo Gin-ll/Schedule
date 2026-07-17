@@ -83,6 +83,15 @@
                         <span class="tag-dot" :style="{ backgroundColor: getCategory(inst.categoryId).color }"></span>
                         {{ getCategory(inst.categoryId).name }}
                       </span>
+                      <!-- 事项标签 -->
+                      <span 
+                        v-if="getMatter(inst.matterId)" 
+                        class="meta-tag category-tag" 
+                        :style="{ backgroundColor: getMatter(inst.matterId).color + '18', color: getMatter(inst.matterId).color }"
+                      >
+                        <span class="mr-0.5">{{ getMatter(inst.matterId).icon || '📌' }}</span>
+                        {{ getMatter(inst.matterId).name }}
+                      </span>
                       <!-- 状态标签 -->
                       <span class="meta-tag status-tag" :class="getStatusClass(inst)">
                         {{ getStatusLabel(inst) }}
@@ -114,6 +123,15 @@
                     <select v-model="editCategoryId" class="edit-select">
                       <option value="">未分类</option>
                       <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                    </select>
+                  </div>
+                  <div class="edit-row select-row">
+                    <span class="edit-label">事项</span>
+                    <select v-model="editMatterId" class="edit-select">
+                      <option value="">无事项</option>
+                      <option v-for="mat in activeMatters" :key="mat.id" :value="mat.id">
+                        {{ mat.icon ? mat.icon + ' ' : '' }}{{ mat.name }}
+                      </option>
                     </select>
                   </div>
                   <div class="edit-row">
@@ -185,6 +203,15 @@
                         <span class="tag-dot" :style="{ backgroundColor: getCategory(inst.categoryId).color }"></span>
                         {{ getCategory(inst.categoryId).name }}
                       </span>
+                      <!-- 事项标签 -->
+                      <span 
+                        v-if="getMatter(inst.matterId)" 
+                        class="meta-tag category-tag" 
+                        :style="{ backgroundColor: getMatter(inst.matterId).color + '18', color: getMatter(inst.matterId).color }"
+                      >
+                        <span class="mr-0.5">{{ getMatter(inst.matterId).icon || '📌' }}</span>
+                        {{ getMatter(inst.matterId).name }}
+                      </span>
                       <!-- 状态标签 -->
                       <span class="meta-tag status-tag" :class="getStatusClass(inst)">
                         {{ getStatusLabel(inst) }}
@@ -216,6 +243,15 @@
                     <select v-model="editCategoryId" class="edit-select">
                       <option value="">未分类</option>
                       <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                    </select>
+                  </div>
+                  <div class="edit-row select-row">
+                    <span class="edit-label">事项</span>
+                    <select v-model="editMatterId" class="edit-select">
+                      <option value="">无事项</option>
+                      <option v-for="mat in activeMatters" :key="mat.id" :value="mat.id">
+                        {{ mat.icon ? mat.icon + ' ' : '' }}{{ mat.name }}
+                      </option>
                     </select>
                   </div>
                   <div class="edit-row">
@@ -616,10 +652,15 @@ export default defineComponent({
       return store.categories.find(c => c.id === catId);
     };
 
+    const getMatter = (matterId: string) => {
+      return store.matters.find(m => m.id === matterId);
+    };
+
     // 编辑弹窗/表单状态
     const editingId = ref<string | null>(null);
     const editTitle = ref('');
     const editCategoryId = ref('');
+    const editMatterId = ref('');
     const editContent = ref('');
     const editSubtasks = ref<Array<{ id: string; title: string; completed: boolean }>>([]);
     const newSubtaskText = ref('');
@@ -628,6 +669,7 @@ export default defineComponent({
       editingId.value = schedule.id;
       editTitle.value = schedule.title;
       editCategoryId.value = schedule.categoryId || '';
+      editMatterId.value = schedule.matterId || '';
       editContent.value = schedule.content || '';
       editSubtasks.value = schedule.subtasks ? JSON.parse(JSON.stringify(schedule.subtasks)) : [];
       newSubtaskText.value = '';
@@ -660,6 +702,7 @@ export default defineComponent({
         await store.updateSchedule(id, {
           title: editTitle.value.trim(),
           categoryId: editCategoryId.value,
+          matterId: editMatterId.value,
           content: editContent.value.trim(),
           subtasks: editSubtasks.value
         });
@@ -705,7 +748,10 @@ export default defineComponent({
       addEditSubtask,
       removeEditSubtask,
       saveEdit,
-      categories: computed(() => store.categories)
+      categories: computed(() => store.categories),
+      getMatter,
+      editMatterId,
+      activeMatters: computed(() => store.matters.filter(m => m.status === 'active'))
     };
   }
 });
