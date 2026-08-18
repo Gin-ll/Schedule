@@ -7,9 +7,10 @@ export interface PlatformAdapter {
 
 export class TauriPlatformAdapter implements PlatformAdapter {
   async initWindow() {
+    let win: any = null;
     try {
       const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      const win = getCurrentWindow();
+      win = getCurrentWindow();
       if (win.label !== 'main') {
         return;
       }
@@ -20,10 +21,17 @@ export class TauriPlatformAdapter implements PlatformAdapter {
 
       // 2. 设置默认的固定窗口位置 (物理像素 x=401, y=183)
       await win.setPosition(new PhysicalPosition(401, 183));
-
-      await win.show();
     } catch (e) {
       console.error("Tauri initWindow error:", e);
+    }
+    // 无论尺寸设置是否成功，窗口都必须显示（创建时为 visible:false，避免闪烁）
+    try {
+      if (win && win.label !== 'main') return;
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      const w = win || getCurrentWindow();
+      await w.show();
+    } catch (e) {
+      console.error("Tauri show window error:", e);
     }
   }
   async sendNotification(title: string, body: string) {
