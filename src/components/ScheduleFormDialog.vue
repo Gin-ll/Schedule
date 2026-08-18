@@ -104,11 +104,12 @@
                 <span class="text-xs font-semibold text-foreground/90">分类</span>
                 <select v-model="form.categoryId" class="w-full h-9 border border-input rounded-lg bg-popover px-2.5 py-1 text-sm outline-none text-foreground font-medium" style="color: var(--text); background: var(--background);">
                   <option value="__none">未分类</option>
-                  <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                  <option v-for="cat in selectableCategories" :key="cat.id" :value="cat.id">
                     {{ cat.name }}
                   </option>
                 </select>
               </div>
+              <!-- 所属事项（事项功能暂时注释）
               <div class="flex flex-col gap-1.5">
                 <span class="text-xs font-semibold text-foreground/90">所属事项</span>
                 <select v-model="form.matterId" @change="onMatterSelectChange" class="w-full h-9 border border-input rounded-lg bg-popover px-2.5 py-1 text-sm outline-none text-foreground font-medium" style="color: var(--text); background: var(--background);">
@@ -119,15 +120,25 @@
                   <option value="__create_new_matter">➕ 新建事项...</option>
                 </select>
               </div>
+              -->
+              <div class="flex flex-col gap-1.5">
+                <span class="text-xs font-semibold text-foreground/90">提醒</span>
+                <select v-model="form.reminder" class="w-full h-9 border border-input rounded-lg bg-popover px-2.5 py-1 text-sm outline-none text-foreground font-medium" style="color: var(--text); background: var(--background);">
+                  <option value="none">无</option>
+                  <option value="10m">提前 10 分钟</option>
+                  <option value="30m">提前 30 分钟</option>
+                  <option value="1h">提前 1 小时</option>
+                </select>
+              </div>
             </div>
 
-            <!-- 快速创建事项内联表单 -->
+            <!-- 快速创建事项内联表单（事项功能暂时注释）
             <div v-if="showQuickCreateMatter" class="p-3 border border-border rounded-lg bg-muted/20 flex flex-col gap-2.5 my-2">
               <span class="text-xs font-bold text-foreground">快速新建事项</span>
               <div class="flex gap-2 items-center">
                 <Input v-model="newMatterName" placeholder="输入事项名称..." class="flex-1 h-8 text-xs font-semibold" style="color: var(--text);" />
                 
-                <!-- 预设颜色选择器 -->
+                预设颜色选择器
                 <select v-model="newMatterColor" class="h-8 border border-input rounded text-xs px-1.5 bg-background font-semibold" style="color: var(--text);">
                   <option value="#3b82f6">蓝色</option>
                   <option value="#10b981">绿色</option>
@@ -137,7 +148,7 @@
                   <option value="#ec4899">粉色</option>
                 </select>
                 
-                <!-- 预设图标选择器 -->
+                预设图标选择器
                 <select v-model="newMatterIcon" class="h-8 border border-input rounded text-xs px-1.5 bg-background font-semibold" style="color: var(--text);">
                   <option value="📌">📌 钉子</option>
                   <option value="🏠">🏠 房子</option>
@@ -152,6 +163,7 @@
                 <Button type="button" variant="secondary" size="xs" @click="saveQuickCreateMatter">创建</Button>
               </div>
             </div>
+            -->
 
             <div class="form-grid">
               <div class="flex flex-col gap-1.5">
@@ -171,21 +183,6 @@
                   <option value="completed">已完成</option>
                   <option value="delayed">已逾期</option>
                 </select>
-              </div>
-            </div>
-
-            <div class="form-grid">
-              <div class="flex flex-col gap-1.5">
-                <span class="text-xs font-semibold text-foreground/90">提醒</span>
-                <select v-model="form.reminder" class="w-full h-9 border border-input rounded-lg bg-popover px-2.5 py-1 text-sm outline-none text-foreground font-medium" style="color: var(--text); background: var(--background);">
-                  <option value="none">无</option>
-                  <option value="10m">提前 10 分钟</option>
-                  <option value="30m">提前 30 分钟</option>
-                  <option value="1h">提前 1 小时</option>
-                </select>
-              </div>
-              <div class="flex flex-col gap-1.5 opacity-0 pointer-events-none select-none">
-                <!-- 占位，保持排版对称 -->
               </div>
             </div>
 
@@ -240,7 +237,7 @@ import { useScheduleStore } from '../stores/scheduleStore';
 import { platform } from '../utils/platformAdapter';
 import type { Category, Subtask, RecurrenceType, ScheduleStatus } from '../types';
 
-defineProps<{
+const props = defineProps<{
   categories: Category[];
 }>();
 
@@ -249,6 +246,19 @@ const emit = defineEmits<{
 }>();
 
 const store = useScheduleStore();
+
+// 可选择的分类：仅显示未隐藏/未删除的；编辑时若当前分类已删除则从回收站保留以正常展示
+const selectableCategories = computed(() => {
+  const visible = props.categories.filter(c => !c.hidden);
+  if (form.value.categoryId && form.value.categoryId !== '__none') {
+    let cur = props.categories.find(c => c.id === form.value.categoryId);
+    if (!cur) cur = store.categoryTrash.find(c => c.id === form.value.categoryId);
+    if (cur && !visible.some(c => c.id === cur.id)) {
+      visible.unshift(cur);
+    }
+  }
+  return visible;
+});
 
 // 预设选项定义
 const hoursList = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));

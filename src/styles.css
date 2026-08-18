@@ -330,6 +330,23 @@ textarea {
   box-shadow: 0 10px 24px rgba(0, 122, 255, 0.24);
 }
 
+/* 头部主操作按钮（图标 + 文字） */
+.header-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+/* 日程列表底部快速添加栏：固定在列表底部，底色与输入框卡片一致，无边框无缝隙 */
+.quick-add-footer {
+  position: relative;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0 0 2px;
+  background: var(--card);
+}
+
 .primary-button:hover {
   background: linear-gradient(180deg, #2492ff, var(--primary-dark));
 }
@@ -636,6 +653,7 @@ input[type="checkbox"]:focus-visible {
   grid-template-columns: minmax(0, 1fr) 330px;
   gap: 14px;
   overflow: hidden;
+  height: 100%;
 }
 
 .calendar-area,
@@ -643,6 +661,11 @@ input[type="checkbox"]:focus-visible {
   padding: 14px;
   min-height: 0;
   overflow: hidden;
+}
+
+.calendar-area {
+  display: flex;
+  flex-direction: column;
 }
 
 .calendar-header {

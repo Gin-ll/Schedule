@@ -1,12 +1,9 @@
 <template>
   <div class="page active">
     <header class="page-header">
-      <div>
-        <p class="eyebrow">Milestones and projects</p>
-        <h2>事项管理</h2>
-      </div>
-      <button class="primary-icon-btn" @click="openAddDialog" type="button" aria-label="新增事项" title="新增事项">
-        <Icon icon="lucide:plus" width="20" height="20" />
+      <button class="primary-button header-add-btn" style="margin-left: auto;" @click="openAddDialog" type="button">
+        <Icon icon="lucide:plus" width="16" height="16" />
+        新增事项
       </button>
     </header>
 

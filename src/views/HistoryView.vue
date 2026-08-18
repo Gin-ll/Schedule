@@ -1,12 +1,5 @@
 <template>
   <div class="page active">
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">Archive & Review</p>
-        <h2>历史回顾</h2>
-      </div>
-    </header>
-
     <!-- 选项卡切换区 -->
     <div class="tabs-container">
       <button class="tab-btn" :class="{ active: currentTab === 'completed' }" @click="currentTab = 'completed'">
@@ -128,14 +121,14 @@
     <Dialog v-model:open="showDeleteConfirm">
       <DialogContent class="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle style="color: var(--text);">删除确认</DialogTitle>
+          <DialogTitle style="color: var(--text);">移入回收站</DialogTitle>
           <DialogDescription style="color: var(--muted-foreground);">
-            确定要彻底删除这个已经逾期的日程吗？此操作无法撤销。
+            确定将此逾期的日程移入回收站吗？可在回收站中恢复。
           </DialogDescription>
         </DialogHeader>
         <div class="flex justify-end gap-2 mt-4">
           <Button variant="outline" @click="showDeleteConfirm = false">取消</Button>
-          <Button variant="destructive" @click="confirmDelete">删除</Button>
+          <Button variant="destructive" @click="confirmDelete">移入回收站</Button>
         </div>
       </DialogContent>
     </Dialog>

@@ -1,21 +1,5 @@
 <template>
   <div class="page active">
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">Today board</p>
-        <h2>日程</h2>
-      </div>
-      <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="primary-icon-btn" @click="openAddDialog" type="button" aria-label="新增日程" title="新增日程">
-          <Icon icon="lucide:plus" width="20" height="20" />
-        </button>
-      </div>
-    </header>
-
-    <div class="toolbar">
-      <input type="search" v-model="searchQuery" placeholder="搜索日程名称或内容...." class="search-input" style="max-width: none; width: 100%;" />
-    </div>
-
     <!-- 列表视图 -->
     <div class="content-panel active list-layout-with-sidebar">
       <aside class="smart-sidebar">
@@ -54,7 +38,7 @@
         </ul>
         <div class="sidebar-divider"></div>
         <ul class="smart-list-filters">
-          <li v-for="cat in categories" :key="cat.id" :class="{ active: activeFilterSection === 'category' && categoryFilter === cat.id }" @click="selectCategoryFilter(cat.id)">
+          <li v-for="cat in visibleCategories" :key="cat.id" :class="{ active: activeFilterSection === 'category' && categoryFilter === cat.id }" @click="selectCategoryFilter(cat.id)">
             <span class="category-dot" :style="{ backgroundColor: cat.color }"></span>
             <span class="truncate flex-1">{{ cat.name }}</span>
             <span class="count-badge">{{ getCategoryCount(cat.id) }}</span>
@@ -64,12 +48,8 @@
             <span class="truncate flex-1">未分类</span>
             <span class="count-badge">{{ getCategoryCount('') }}</span>
           </li>
-          <li :class="{ active: activeFilterSection === 'category' && categoryFilter === 'all' }" @click="selectCategoryFilter('all')">
-            <span class="category-dot" style="background-color: var(--primary);"></span>
-            <span class="truncate flex-1">所有分类</span>
-            <span class="count-badge">{{ counts.catAll }}</span>
-          </li>
         </ul>
+        <!-- 事项筛选（事项功能暂时注释）
         <div class="sidebar-divider"></div>
         <div class="px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider select-none">事项</div>
         <ul class="smart-list-filters">
@@ -98,9 +78,12 @@
             新建事项
           </li>
         </ul>
+        -->
       </aside>
-      <div class="schedule-list-container" style="display: flex; flex-direction: column;">
-        <!-- 事项详情进度面板 -->
+      <div class="schedule-list-container" style="display: flex; flex-direction: column; height: 100%; min-height: 0;">
+        <!-- 可滚动列表区 -->
+        <div class="schedule-scroll" style="flex: 1; min-height: 0; overflow-y: auto;">
+        <!-- 事项详情进度面板（事项功能暂时注释）
         <div v-if="activeFilterSection === 'matter' && currentMatter" class="mb-5 p-4 border border-border rounded-lg bg-card/30 flex flex-col gap-3.5">
           <div class="flex items-center justify-between gap-3 flex-wrap">
             <div class="flex items-center gap-2 flex-wrap">
@@ -118,7 +101,7 @@
           </div>
           <p v-if="currentMatter.description" class="text-xs text-muted-foreground leading-relaxed -mt-1">{{ currentMatter.description }}</p>
           
-          <!-- 进度条 -->
+          进度条
           <div class="flex flex-col gap-2 mt-1">
             <div class="flex justify-between text-xs font-semibold text-muted-foreground">
               <span>{{ completedCountOfMatter }} / {{ totalCountOfMatter }} 已完成</span>
@@ -129,6 +112,7 @@
             </div>
           </div>
         </div>
+        -->
 
         <div class="schedule-list" v-if="visibleSchedules.length > 0" style="display: flex; flex-direction: column; gap: 0;">
           <!-- 未完成日程区块 -->
@@ -235,9 +219,15 @@
             </div>
           </div>
         </div>
-        <div v-else class="empty-state" style="flex: 1;">
+        <div v-else class="empty-state" style="flex: 1; min-height: 100%;">
           <Icon icon="lucide:calendar-x" class="empty-icon" />
           <span>暂无日程</span>
+        </div>
+        </div>
+
+        <!-- 底部快速添加栏（回车创建） -->
+        <div class="quick-add-footer">
+          <QuickAddBar :categories="categories" />
         </div>
       </div>
     </div>
@@ -245,7 +235,7 @@
     <!-- 表单 Dialog -->
     <ScheduleFormDialog ref="scheduleFormDialogRef" :categories="categories" />
 
-    <!-- 新增/编辑事项弹窗 -->
+    <!-- 新增/编辑事项弹窗（事项功能暂时注释）
     <Dialog v-model:open="showMatterDialog">
       <DialogContent class="sm:max-w-[400px]">
         <DialogHeader>
@@ -292,19 +282,20 @@
         </div>
       </DialogContent>
     </Dialog>
+    -->
 
     <!-- 自定义删除确认弹窗 -->
     <Dialog v-model:open="showDeleteConfirm">
       <DialogContent class="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle style="color: var(--text);">删除确认</DialogTitle>
+          <DialogTitle style="color: var(--text);">移入回收站</DialogTitle>
           <DialogDescription style="color: var(--muted-foreground);">
-            确认要彻底删除此日程吗？此操作无法撤销。
+            确认将此日程移入回收站吗？可在回收站中恢复。
           </DialogDescription>
         </DialogHeader>
         <div class="flex justify-end gap-2 mt-4">
           <Button variant="outline" @click="showDeleteConfirm = false">取消</Button>
-          <Button variant="destructive" @click="executeDeleteSchedule">删除</Button>
+          <Button variant="destructive" @click="executeDeleteSchedule">移入回收站</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -318,6 +309,7 @@ import { Schedule, Category, Matter } from '../types';
 import { Icon } from '@iconify/vue';
 import { platform } from '../utils/platformAdapter';
 import ScheduleFormDialog from '../components/ScheduleFormDialog.vue';
+import QuickAddBar from '../components/QuickAddBar.vue';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -330,6 +322,7 @@ export default defineComponent({
   components: {
     Icon,
     ScheduleFormDialog,
+    QuickAddBar,
     Dialog,
     DialogContent,
     DialogHeader,
@@ -369,6 +362,8 @@ export default defineComponent({
     const scheduleFormDialogRef = ref<InstanceType<typeof ScheduleFormDialog> | null>(null);
 
     const categories = computed(() => store.categories);
+    // 侧边栏分类筛选项：仅显示未隐藏的分类
+    const visibleCategories = computed(() => store.categories.filter(c => !c.hidden));
 
     // 互斥的过滤操作函数
     const selectListFilter = (filter: 'today' | 'tomorrow' | 'next7days' | 'completed' | 'overdue' | 'all') => {
@@ -500,14 +495,14 @@ export default defineComponent({
       return store.schedules.filter(s => (s.categoryId || '') === catId).length;
     }
 
-    // 分类样式和属性获取
+    // 分类样式和属性获取（含回收站分类：已删除分类仍被日程引用，需正常显示）
     function getCategoryName(catId: string): string {
-      const cat = store.categories.find(c => c.id === catId);
+      const cat = store.allCategories.find(c => c.id === catId);
       return cat ? cat.name : '未分类';
     }
 
     function getCategoryColor(catId: string): string {
-      const cat = store.categories.find(c => c.id === catId);
+      const cat = store.allCategories.find(c => c.id === catId);
       return cat ? cat.color : '';
     }
 
@@ -824,6 +819,7 @@ export default defineComponent({
       matterFilter,
       activeFilterSection,
       categories,
+      visibleCategories,
       counts,
       getCategoryCount,
       visibleSchedules,
