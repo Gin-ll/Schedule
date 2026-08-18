@@ -157,7 +157,7 @@ async function handleSave() {
                 <Button 
                   type="button" 
                   variant="outline" 
-                  class="w-[130px] h-9 justify-start gap-2 border border-input"
+                  class="w-full h-9 justify-start gap-2 border border-input"
                   :disabled="isSaving"
                 >
                   <span class="w-4 h-4 rounded-full border border-border" :style="{ backgroundColor: form.color }"></span>
