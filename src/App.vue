@@ -26,17 +26,25 @@
           </button>
         </router-link>
 
-        <!-- 路由到 matters 视图 -->
+        <!-- 路由到 matters 视图（事项功能暂时注释）
         <router-link to="/matters" custom v-slot="{ navigate, isActive }">
           <button class="nav-item" :class="{ active: isActive }" @click="navigate" type="button" title="事项管理">
             <Icon icon="lucide:briefcase" width="24" height="24" />
           </button>
         </router-link>
+        -->
 
         <!-- 路由到 history 视图 -->
         <router-link to="/history" custom v-slot="{ navigate, isActive }">
           <button class="nav-item" :class="{ active: isActive }" @click="navigate" type="button" title="历史回顾">
             <Icon icon="lucide:history" width="24" height="24" />
+          </button>
+        </router-link>
+
+        <!-- 路由到 trash 视图 -->
+        <router-link to="/trash" custom v-slot="{ navigate, isActive }">
+          <button class="nav-item" :class="{ active: isActive }" @click="navigate" type="button" title="回收站">
+            <Icon icon="lucide:trash-2" width="24" height="24" />
           </button>
         </router-link>
       </nav>
@@ -108,6 +116,7 @@
 <script lang="ts">
 import { defineComponent, onMounted, ref } from 'vue';
 import { useScheduleStore } from './stores/scheduleStore';
+import { startNotificationService } from './utils/notificationService';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { Icon } from '@iconify/vue';
@@ -168,6 +177,8 @@ export default defineComponent({
         } catch (e) {
           console.warn("Failed to check autostart status", e);
         }
+        // 启动到期提醒轮询服务（主窗口关闭被隐藏而非销毁，轮询可持续运行）
+        startNotificationService(store);
       }
 
       // 监听多窗口同步事件
