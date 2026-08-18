@@ -83,7 +83,7 @@
                         <span class="tag-dot" :style="{ backgroundColor: getCategory(inst.categoryId).color }"></span>
                         {{ getCategory(inst.categoryId).name }}
                       </span>
-                      <!-- 事项标签 -->
+                      <!-- 事项标签（事项功能暂时注释）
                       <span 
                         v-if="getMatter(inst.matterId)" 
                         class="meta-tag category-tag" 
@@ -92,6 +92,7 @@
                         <span class="mr-0.5">{{ getMatter(inst.matterId).icon || '📌' }}</span>
                         {{ getMatter(inst.matterId).name }}
                       </span>
+                      -->
                       <!-- 状态标签 -->
                       <span class="meta-tag status-tag" :class="getStatusClass(inst)">
                         {{ getStatusLabel(inst) }}
@@ -122,9 +123,10 @@
                     <span class="edit-label">分类</span>
                     <select v-model="editCategoryId" class="edit-select">
                       <option value="">未分类</option>
-                      <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                      <option v-for="cat in visibleCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                     </select>
                   </div>
+                  <!-- 事项编辑（事项功能暂时注释）
                   <div class="edit-row select-row">
                     <span class="edit-label">事项</span>
                     <select v-model="editMatterId" class="edit-select">
@@ -134,6 +136,7 @@
                       </option>
                     </select>
                   </div>
+                  -->
                   <div class="edit-row">
                     <span class="edit-label">备注内容</span>
                     <textarea v-model="editContent" class="edit-textarea" placeholder="输入日程备注内容..." rows="2"></textarea>
@@ -203,7 +206,7 @@
                         <span class="tag-dot" :style="{ backgroundColor: getCategory(inst.categoryId).color }"></span>
                         {{ getCategory(inst.categoryId).name }}
                       </span>
-                      <!-- 事项标签 -->
+                      <!-- 事项标签（事项功能暂时注释）
                       <span 
                         v-if="getMatter(inst.matterId)" 
                         class="meta-tag category-tag" 
@@ -212,6 +215,7 @@
                         <span class="mr-0.5">{{ getMatter(inst.matterId).icon || '📌' }}</span>
                         {{ getMatter(inst.matterId).name }}
                       </span>
+                      -->
                       <!-- 状态标签 -->
                       <span class="meta-tag status-tag" :class="getStatusClass(inst)">
                         {{ getStatusLabel(inst) }}
@@ -242,9 +246,10 @@
                     <span class="edit-label">分类</span>
                     <select v-model="editCategoryId" class="edit-select">
                       <option value="">未分类</option>
-                      <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                      <option v-for="cat in visibleCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                     </select>
                   </div>
+                  <!-- 事项编辑（事项功能暂时注释）
                   <div class="edit-row select-row">
                     <span class="edit-label">事项</span>
                     <select v-model="editMatterId" class="edit-select">
@@ -254,6 +259,7 @@
                       </option>
                     </select>
                   </div>
+                  -->
                   <div class="edit-row">
                     <span class="edit-label">备注内容</span>
                     <textarea v-model="editContent" class="edit-textarea" placeholder="输入日程备注内容..." rows="2"></textarea>
@@ -579,8 +585,8 @@ export default defineComponent({
       const now = new Date();
       start.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
 
-      // 查找分类中名称为“工作”的分类作为默认分类
-      const workCategory = store.categories.find(c => c.name === '工作');
+      // 查找分类中名称为“工作”的分类作为默认分类（隐藏的分类不采用）
+      const workCategory = store.categories.find(c => c.name === '工作' && !c.hidden);
       const categoryId = workCategory ? workCategory.id : '';
 
       const newSchedule: Schedule = {
@@ -649,7 +655,7 @@ export default defineComponent({
     };
 
     const getCategory = (catId: string) => {
-      return store.categories.find(c => c.id === catId);
+      return store.allCategories.find(c => c.id === catId);
     };
 
     const getMatter = (matterId: string) => {
@@ -749,6 +755,7 @@ export default defineComponent({
       removeEditSubtask,
       saveEdit,
       categories: computed(() => store.categories),
+      visibleCategories: computed(() => store.categories.filter(c => !c.hidden)),
       getMatter,
       editMatterId,
       activeMatters: computed(() => store.matters.filter(m => m.status === 'active'))
