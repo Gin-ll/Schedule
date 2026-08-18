@@ -34,6 +34,18 @@ export class DomainRepository {
   async delete(id: string) {
     await this.adapter.delete(id);
   }
+
+  async getDeleted() {
+    return this.adapter.getDeleted();
+  }
+
+  async restore(id: string) {
+    await this.adapter.restore(id);
+  }
+
+  async purge(id: string) {
+    await this.adapter.purge(id);
+  }
 }
 
 // 惰性加载原生数据库连接以供 TauriSqliteAdapter 消费

@@ -17,8 +17,14 @@ export const useScheduleStore = defineStore('schedule', {
     schedules: [] as Schedule[],
     categories: [] as Category[],
     matters: [] as Matter[],
+    trash: [] as Schedule[],
+    categoryTrash: [] as Category[],
     loading: false
   }),
+  getters: {
+    /** 所有分类（含回收站中的），用于日程分类名/颜色显示（已删除分类仍被日程引用） */
+    allCategories: (state) => [...state.categories, ...state.categoryTrash]
+  },
   actions: {
     async loadAll() {
       this.loading = true;
@@ -32,6 +38,9 @@ export const useScheduleStore = defineStore('schedule', {
 
         const cats = await categoryRepo.getAll();
         this.categories = cats;
+
+        // 加载回收站分类，供日程分类名/颜色显示（已删除但日程仍引用）与回收站使用
+        this.categoryTrash = await categoryRepo.getDeleted();
 
         const matts = await matterRepo.getAll();
         this.matters = matts;
@@ -68,24 +77,76 @@ export const useScheduleStore = defineStore('schedule', {
     },
     async deleteCategory(catId: string) {
       const now = new Date().toISOString();
-      const savePromises: Promise<void>[] = [];
-      this.schedules = this.schedules.map(s => {
-        if (s.categoryId === catId) {
-          const updated = { ...s, categoryId: '', updatedAt: now };
-          savePromises.push(scheduleRepo.save(s.id, updated));
-          return updated;
-        }
-        return s;
-      });
+      const target = this.categories.find(c => c.id === catId);
+      // 移入回收站：不解除日程与分类的关系，日程仍保留该分类显示
       this.categories = this.categories.filter(c => c.id !== catId);
-      await Promise.all(savePromises);
-      await categoryRepo.delete(catId);
+      if (target) {
+        await categoryRepo.save(catId, { ...target, isDeleted: 1, updatedAt: now });
+      } else {
+        await categoryRepo.delete(catId);
+      }
+      this.categoryTrash = await categoryRepo.getDeleted();
       await triggerSync();
     },
     async deleteSchedule(id: string) {
+      // 软删除：写入 is_deleted=1 并记录删除时间，便于回收站展示与恢复
+      const now = new Date().toISOString();
+      const target = this.schedules.find(s => s.id === id);
+      if (target) {
+        await scheduleRepo.save(id, { ...target, isDeleted: 1, updatedAt: now });
+      } else {
+        await scheduleRepo.delete(id);
+      }
       this.schedules = this.schedules.filter(s => s.id !== id);
-      await scheduleRepo.delete(id);
       await triggerSync();
+    },
+    /** 加载回收站（已软删除的日程） */
+    async loadTrash() {
+      this.trash = await scheduleRepo.getDeleted();
+    },
+    /** 从回收站恢复日程 */
+    async restoreSchedule(id: string) {
+      await scheduleRepo.restore(id);
+      this.trash = this.trash.filter(s => s.id !== id);
+      await this.loadAll();
+      await triggerSync();
+    },
+    /** 从回收站永久删除单个日程（不可恢复） */
+    async purgeSchedule(id: string) {
+      await scheduleRepo.purge(id);
+      this.trash = this.trash.filter(s => s.id !== id);
+    },
+    /** 清空回收站（全部永久删除） */
+    async emptyTrash() {
+      const ids = this.trash.map(s => s.id);
+      for (const id of ids) {
+        await scheduleRepo.purge(id);
+      }
+      this.trash = [];
+    },
+    /** 加载回收站中的分类（已软删除） */
+    async loadCategoryTrash() {
+      this.categoryTrash = await categoryRepo.getDeleted();
+    },
+    /** 从回收站恢复分类 */
+    async restoreCategory(id: string) {
+      await categoryRepo.restore(id);
+      this.categoryTrash = this.categoryTrash.filter(c => c.id !== id);
+      await this.loadAll();
+      await triggerSync();
+    },
+    /** 从回收站永久删除分类 */
+    async purgeCategory(id: string) {
+      await categoryRepo.purge(id);
+      this.categoryTrash = this.categoryTrash.filter(c => c.id !== id);
+    },
+    /** 清空分类回收站 */
+    async emptyCategoryTrash() {
+      const ids = this.categoryTrash.map(c => c.id);
+      for (const id of ids) {
+        await categoryRepo.purge(id);
+      }
+      this.categoryTrash = [];
     },
     async addCategory(payload: Omit<Category, 'id'>) {
       const id = `cat-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;

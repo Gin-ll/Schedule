@@ -1,16 +1,6 @@
 <template>
   <div class="page active">
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">Color labels</p>
-        <h2>分类</h2>
-      </div>
-      <button class="primary-icon-btn" @click="openAddDialog" type="button" aria-label="新增分类" title="新增分类">
-        <Icon icon="lucide:plus" width="20" height="20" />
-      </button>
-    </header>
-
-    <div class="category-list" v-if="categories.length > 0">
+    <div class="category-list" v-if="categories.length > 0" style="flex: 1; min-height: 0; overflow-y: auto; align-content: flex-start;">
       <article v-for="category in categories" :key="category.id" class="category-card" style="display: flex; justify-content: space-between; align-items: flex-start;">
         <div>
           <h3 style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; margin: 0 0 6px 0;">
@@ -55,21 +45,58 @@
       <span>暂无分类</span>
     </div>
 
-    <!-- 表单 Dialog -->
+    <!-- 底部快速添加分类栏：输入名称回车创建 + 颜色选择 -->
+    <div class="category-add-footer">
+      <div class="quick-add-row">
+        <Icon icon="lucide:circle-plus" class="quick-add-icon" width="18" height="18" />
+        <input v-model="newName" class="quick-add-input" placeholder="添加分类，输入名称后回车…" maxlength="20" @keyup.enter="addCategoryQuick" />
+        <Popover v-model:open="colorOpen">
+          <PopoverTrigger as-child>
+            <button class="quick-color-trigger" type="button" title="选择颜色">
+              <span class="quick-color-swatch" :style="{ backgroundColor: newColor }"></span>
+              <Icon icon="lucide:palette" width="15" height="15" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent class="w-[220px] p-3 gap-3 flex flex-col" align="end" side="bottom">
+            <span class="text-[10px] font-semibold text-muted-foreground/80">预设精美颜色</span>
+            <div class="grid grid-cols-4 gap-2">
+              <button
+                v-for="c in presetColors"
+                :key="c"
+                type="button"
+                class="w-8 h-8 rounded-full border border-border cursor-pointer transition-transform hover:scale-110 active:scale-95 flex-shrink-0"
+                :style="{ backgroundColor: c }"
+                @click="newColor = c"
+              ></button>
+            </div>
+            <div class="flex items-center justify-between border-t border-border pt-2 gap-2 mt-1">
+              <span class="text-[10px] text-muted-foreground">自定义色彩</span>
+              <input
+                type="color"
+                v-model="newColor"
+                class="w-8 h-6 p-0 border border-input rounded cursor-pointer"
+              />
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+    </div>
+
+    <!-- 表单 Dialog（编辑用） -->
     <CategoryFormDialog ref="categoryFormDialogRef" />
 
     <!-- 自定义删除确认弹窗 -->
     <Dialog v-model:open="showDeleteConfirm">
       <DialogContent class="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle style="color: var(--text);">删除确认</DialogTitle>
+          <DialogTitle style="color: var(--text);">移入回收站</DialogTitle>
           <DialogDescription style="color: var(--muted-foreground);">
-            确认要删除分类吗？属于该分类的日程将变为未分类状态。此操作无法撤销。
+            已有日程仍保留该分类，移入后将无法在新增或编辑日程时选择此分类。可在回收站中恢复。
           </DialogDescription>
         </DialogHeader>
         <div class="flex justify-end gap-2 mt-4">
           <Button variant="outline" @click="showDeleteConfirm = false">取消</Button>
-          <Button variant="destructive" @click="executeDeleteCategory">删除</Button>
+          <Button variant="destructive" @click="executeDeleteCategory">移入回收站</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -85,6 +112,23 @@ import { platform } from '../utils/platformAdapter';
 import CategoryFormDialog from '../components/CategoryFormDialog.vue';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+// 12 种高档柔和预设色板（与 CategoryFormDialog 保持一致）
+const presetColors = [
+  '#007aff', // 晴空蓝
+  '#34c759', // 薄荷绿
+  '#ff9500', // 橙黄
+  '#ff3b30', // 浆果红
+  '#af52de', // 浅熏紫
+  '#5856d6', // 靛蓝
+  '#ff2d55', // 桃红
+  '#4cd964', // 嫩绿
+  '#5ac8fa', // 湖蓝
+  '#ffcc00', // 金黄
+  '#8e8e93', // 石墨灰
+  '#1d1d1f'  // 极客黑
+];
 
 export default defineComponent({
   name: 'CategoriesView',
@@ -96,11 +140,19 @@ export default defineComponent({
     DialogHeader,
     DialogTitle,
     DialogDescription,
-    Button
+    Button,
+    Popover,
+    PopoverContent,
+    PopoverTrigger
   },
   setup() {
     const store = useScheduleStore();
     const categoryFormDialogRef = ref<InstanceType<typeof CategoryFormDialog> | null>(null);
+
+    // 底部快速添加状态
+    const newName = ref('');
+    const newColor = ref(presetColors[0]); // 默认蓝色
+    const colorOpen = ref(false);
 
     // 删除弹窗状态
     const showDeleteConfirm = ref(false);
@@ -131,8 +183,17 @@ export default defineComponent({
       };
     }
 
-    function openAddDialog() {
-      categoryFormDialogRef.value?.open();
+    async function addCategoryQuick() {
+      const name = newName.value.trim();
+      if (!name) return;
+      try {
+        await store.addCategory({ name, color: newColor.value });
+        newName.value = '';
+        // 颜色保留，便于连续添加
+      } catch (error: any) {
+        console.error("Failed to add category:", error);
+        await platform.showError("新增分类失败", error.message || String(error));
+      }
     }
 
     function openEditDialog(category: Category) {
@@ -160,9 +221,13 @@ export default defineComponent({
 
     return {
       categories,
+      presetColors,
+      newName,
+      newColor,
+      colorOpen,
+      addCategoryQuick,
       getStats,
       categoryFormDialogRef,
-      openAddDialog,
       openEditDialog,
       deleteCategory,
       executeDeleteCategory,
@@ -171,3 +236,76 @@ export default defineComponent({
   }
 });
 </script>
+
+<style scoped>
+.category-add-footer {
+  position: relative;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0 0 2px;
+  background: var(--card);
+}
+
+.quick-add-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.quick-add-row:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.12);
+}
+
+.quick-add-icon {
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+
+.quick-add-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.quick-add-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.quick-color-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.quick-color-trigger:hover {
+  background: var(--panel-strong);
+  color: var(--text);
+}
+
+.quick-color-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+</style>

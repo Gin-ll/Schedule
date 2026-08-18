@@ -4,7 +4,9 @@ import CalendarView from '../views/CalendarView.vue';
 import CategoriesView from '../views/CategoriesView.vue';
 import WidgetView from '../views/WidgetView.vue';
 import HistoryView from '../views/HistoryView.vue';
-import MattersView from '../views/MattersView.vue';
+import TrashView from '../views/TrashView.vue';
+// 事项功能暂时注释
+// import MattersView from '../views/MattersView.vue';
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -13,9 +15,10 @@ const router = createRouter({
     { path: '/schedules', component: SchedulesView },
     { path: '/calendar', component: CalendarView },
     { path: '/categories', component: CategoriesView },
-    { path: '/matters', component: MattersView },
+    // { path: '/matters', component: MattersView },
     { path: '/widget', component: WidgetView },
-    { path: '/history', component: HistoryView }
+    { path: '/history', component: HistoryView },
+    { path: '/trash', component: TrashView }
   ]
 });
 

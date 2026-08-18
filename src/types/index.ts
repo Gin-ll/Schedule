@@ -14,6 +14,9 @@ export interface Category {
   note?: string;
   isDeleted?: number;
   revision?: number;
+  /** 1 表示隐藏：不出现在添加/编辑选择与侧边栏筛选 */
+  hidden?: number;
+  updatedAt?: string;
 }
 
 export interface Schedule {

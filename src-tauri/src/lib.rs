@@ -71,6 +71,22 @@ pub fn run() {
       ",
             kind: tauri_plugin_sql::MigrationKind::Up,
         },
+        tauri_plugin_sql::Migration {
+            version: 4,
+            description: "add_category_hidden",
+            sql: "
+        ALTER TABLE categories ADD COLUMN hidden INTEGER DEFAULT 0;
+      ",
+            kind: tauri_plugin_sql::MigrationKind::Up,
+        },
+        tauri_plugin_sql::Migration {
+            version: 5,
+            description: "add_category_updated_at",
+            sql: "
+        ALTER TABLE categories ADD COLUMN updated_at TEXT;
+      ",
+            kind: tauri_plugin_sql::MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
