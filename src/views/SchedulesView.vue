@@ -609,7 +609,8 @@ export default defineComponent({
     });
 
     const isPendingExpanded = ref(true);
-    const isCompletedExpanded = ref(true);
+    // 已完成区块默认隐藏（收起），点击折叠头或侧边栏"已完成"筛选可查看
+    const isCompletedExpanded = ref(false);
 
     const pendingSchedules = computed(() => {
       const list = visibleSchedules.value.filter(s => s.status !== 'completed');
