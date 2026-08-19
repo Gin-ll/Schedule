@@ -41,8 +41,18 @@
         </div>
       </div>
 
-      <div v-if="filteredTrash.length > 0" class="trash-list">
-        <article v-for="item in filteredTrash" :key="item.id" class="trash-item">
+      <div v-if="groupedTrash.length > 0" class="trash-list">
+        <template v-for="g in groupedTrash" :key="g.key">
+          <!-- 日期时间轴节点 -->
+          <div class="trash-date-divider">
+            <span class="trash-date-line"></span>
+            <span class="trash-date-label">
+              <Icon icon="lucide:calendar-days" width="13" height="13" />
+              {{ g.label }}
+            </span>
+            <span class="trash-date-line"></span>
+          </div>
+          <article v-for="item in g.items" :key="item.id" class="trash-item">
           <div class="trash-item-main">
             <div class="trash-item-title-row">
               <span
@@ -74,6 +84,7 @@
             </button>
           </div>
         </article>
+        </template>
       </div>
       <div v-else class="empty-state" style="flex: 1;">
         <Icon :icon="store.trash.length > 0 ? 'lucide:search-x' : 'lucide:trash-2'" class="empty-icon" />
@@ -83,8 +94,18 @@
 
     <!-- 分类回收站 -->
     <template v-else>
-      <div v-if="store.categoryTrash.length > 0" class="trash-list">
-        <article v-for="c in store.categoryTrash" :key="c.id" class="trash-item">
+      <div v-if="groupedCategoryTrash.length > 0" class="trash-list">
+        <template v-for="g in groupedCategoryTrash" :key="g.key">
+          <!-- 日期时间轴节点 -->
+          <div class="trash-date-divider">
+            <span class="trash-date-line"></span>
+            <span class="trash-date-label">
+              <Icon icon="lucide:folder" width="13" height="13" />
+              {{ g.label }}
+            </span>
+            <span class="trash-date-line"></span>
+          </div>
+          <article v-for="c in g.items" :key="c.id" class="trash-item">
           <div class="trash-item-main">
             <div class="trash-item-title-row">
               <span class="color-dot" :style="{ backgroundColor: c.color, width: '10px', height: '10px', borderRadius: '50%', display: 'inline-block', flexShrink: 0 }"></span>
@@ -102,6 +123,7 @@
             </button>
           </div>
         </article>
+        </template>
       </div>
       <div v-else class="empty-state" style="flex: 1;">
         <Icon icon="lucide:folder-open" class="empty-icon" />
@@ -263,16 +285,72 @@ export default defineComponent({
 
     const filteredTrash = computed(() => {
       const q = searchQuery.value.trim().toLowerCase();
-      return trash.value.filter(item => {
-        if (q
-          && !item.title.toLowerCase().includes(q)
-          && !(item.content || '').toLowerCase().includes(q)) {
-          return false;
+      return trash.value
+        .filter(item => {
+          if (q
+            && !item.title.toLowerCase().includes(q)
+            && !(item.content || '').toLowerCase().includes(q)) {
+            return false;
+          }
+          if (categoryFilter.value !== 'all' && item.categoryId !== categoryFilter.value) return false;
+          if (!inTimeRange(item.updatedAt, timeFilter.value)) return false;
+          return true;
+        })
+        // 按删除时间倒序：日期近的排上面
+        .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+    });
+
+    // 日期时间轴：把日程按删除日期分组（近→远），组内按删除时间倒序
+    function dateKey(iso: string): string {
+      return iso ? iso.slice(0, 10) : 'unknown';
+    }
+
+    function dateLabel(iso: string): string {
+      if (!iso) return '未知日期';
+      const d = new Date(iso);
+      const today = new Date();
+      const yesterday = new Date();
+      yesterday.setDate(today.getDate() - 1);
+      const same = (a: Date, b: Date) =>
+        a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+      if (same(d, today)) return '今天';
+      if (same(d, yesterday)) return '昨天';
+      return `${d.getMonth() + 1}月${d.getDate()}日`;
+    }
+
+    const groupedTrash = computed(() => {
+      const groups: { key: string; label: string; items: Schedule[] }[] = [];
+      for (const item of filteredTrash.value) {
+        const key = dateKey(item.updatedAt);
+        const last = groups[groups.length - 1];
+        if (last && last.key === key) {
+          last.items.push(item);
+        } else {
+          groups.push({ key, label: dateLabel(item.updatedAt), items: [item] });
         }
-        if (categoryFilter.value !== 'all' && item.categoryId !== categoryFilter.value) return false;
-        if (!inTimeRange(item.updatedAt, timeFilter.value)) return false;
-        return true;
-      });
+      }
+      return groups;
+    });
+
+    // 分类回收站同样按删除时间倒序并分组
+    const sortedCategoryTrash = computed(() =>
+      store.categoryTrash
+        .slice()
+        .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
+    );
+
+    const groupedCategoryTrash = computed(() => {
+      const groups: { key: string; label: string; items: Category[] }[] = [];
+      for (const c of sortedCategoryTrash.value) {
+        const key = dateKey(c.updatedAt);
+        const last = groups[groups.length - 1];
+        if (last && last.key === key) {
+          last.items.push(c);
+        } else {
+          groups.push({ key, label: dateLabel(c.updatedAt), items: [c] });
+        }
+      }
+      return groups;
     });
 
     function formatDateTime(iso: string): string {
@@ -392,7 +470,8 @@ export default defineComponent({
       currentTab,
       switchTab,
       trash,
-      filteredTrash,
+      groupedTrash,
+      groupedCategoryTrash,
       visibleCategories,
       visibleCategoryOf,
       searchQuery,
@@ -516,6 +595,38 @@ export default defineComponent({
   min-height: 0;
   overflow-y: auto;
   padding: 2px 6px 12px 2px;
+}
+
+/* 日期时间轴节点 */
+.trash-date-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 2px;
+}
+
+.trash-date-divider:first-child {
+  margin-top: 0;
+}
+
+.trash-date-line {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.trash-date-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--panel-strong);
+  padding: 3px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .trash-item {
